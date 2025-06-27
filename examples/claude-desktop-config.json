@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "redmine": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@your-org/mcp-server-redmine"
+      ],
+      "env": {
+        "REDMINE_URL": "https://your-redmine-instance.com",
+        "REDMINE_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
