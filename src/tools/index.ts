@@ -60,74 +60,6 @@ import {
   deleteWikiPage,
 } from './wiki.js';
 
-// Export all tools
-export const tools: Tool[] = [
-  // Issue tools
-  listIssuesTool,
-  getIssueTool,
-  createIssueTool,
-  updateIssueTool,
-  deleteIssueTool,
-  
-  // Project tools
-  listProjectsTool,
-  getProjectTool,
-  getProjectVersionsTool,
-  
-  // User tools
-  listUsersTool,
-  getCurrentUserTool,
-  getUserTool,
-  
-  // Time entry tools
-  listTimeEntriesTool,
-  getTimeEntryTool,
-  createTimeEntryTool,
-  updateTimeEntryTool,
-  deleteTimeEntryTool,
-  listTimeEntryActivitiesTool,
-  
-  // Wiki tools
-  listWikiPagesTool,
-  getWikiPageTool,
-  createOrUpdateWikiPageTool,
-  deleteWikiPageTool,
-];
-
-// Export tool handlers map
-export const toolHandlers: Record<string, (input: unknown) => Promise<any>> = {
-  // Issue handlers
-  redmine_list_issues: listIssues,
-  redmine_get_issue: getIssue,
-  redmine_create_issue: createIssue,
-  redmine_update_issue: updateIssue,
-  redmine_delete_issue: deleteIssue,
-  
-  // Project handlers
-  redmine_list_projects: listProjects,
-  redmine_get_project: getProject,
-  redmine_get_project_versions: getProjectVersions,
-  
-  // User handlers
-  redmine_list_users: listUsers,
-  redmine_get_current_user: getCurrentUser,
-  redmine_get_user: getUser,
-  
-  // Time entry handlers
-  redmine_list_time_entries: listTimeEntries,
-  redmine_get_time_entry: getTimeEntry,
-  redmine_create_time_entry: createTimeEntry,
-  redmine_update_time_entry: updateTimeEntry,
-  redmine_delete_time_entry: deleteTimeEntry,
-  redmine_list_time_entry_activities: listTimeEntryActivities,
-  
-  // Wiki handlers
-  redmine_list_wiki_pages: listWikiPages,
-  redmine_get_wiki_page: getWikiPage,
-  redmine_create_or_update_wiki_page: createOrUpdateWikiPage,
-  redmine_delete_wiki_page: deleteWikiPage,
-};
-
 // Add custom API request tool
 export const customRequestTool: Tool = {
   name: 'redmine_custom_request',
@@ -181,10 +113,6 @@ export async function customRequest(input: unknown) {
     };
   }
 }
-
-// Add custom request to tools and handlers
-tools.push(customRequestTool);
-toolHandlers['redmine_custom_request'] = customRequest;
 
 // Helper tools
 export const listStatusesTool: Tool = {
@@ -295,12 +223,6 @@ export async function listTrackers(input: unknown) {
   }
 }
 
-// Add helper tools
-tools.push(listStatusesTool, listPrioritiesTool, listTrackersTool);
-toolHandlers['redmine_list_statuses'] = listStatuses;
-toolHandlers['redmine_list_priorities'] = listPriorities;
-toolHandlers['redmine_list_trackers'] = listTrackers;
-
 // Search tool
 export const searchTool: Tool = {
   name: 'redmine_search',
@@ -348,5 +270,92 @@ export async function searchRedmine(input: any) {
   }
 }
 
-tools.push(searchTool);
-toolHandlers['redmine_search'] = searchRedmine;
+// Export all tools
+export const tools: Tool[] = [
+  // Issue tools
+  listIssuesTool,
+  getIssueTool,
+  createIssueTool,
+  updateIssueTool,
+  deleteIssueTool,
+  
+  // Project tools
+  listProjectsTool,
+  getProjectTool,
+  getProjectVersionsTool,
+  
+  // User tools
+  listUsersTool,
+  getCurrentUserTool,
+  getUserTool,
+  
+  // Time entry tools
+  listTimeEntriesTool,
+  getTimeEntryTool,
+  createTimeEntryTool,
+  updateTimeEntryTool,
+  deleteTimeEntryTool,
+  listTimeEntryActivitiesTool,
+  
+  // Wiki tools
+  listWikiPagesTool,
+  getWikiPageTool,
+  createOrUpdateWikiPageTool,
+  deleteWikiPageTool,
+
+  // Custom request tool
+  customRequestTool,
+
+  // Helper tools
+  listStatusesTool,
+  listPrioritiesTool,
+  listTrackersTool,
+
+  // Search tool
+  searchTool,
+];
+
+// Export tool handlers map
+export const toolHandlers: Record<string, (input: unknown) => Promise<any>> = {
+  // Issue handlers
+  redmine_list_issues: listIssues,
+  redmine_get_issue: getIssue,
+  redmine_create_issue: createIssue,
+  redmine_update_issue: updateIssue,
+  redmine_delete_issue: deleteIssue,
+  
+  // Project handlers
+  redmine_list_projects: listProjects,
+  redmine_get_project: getProject,
+  redmine_get_project_versions: getProjectVersions,
+  
+  // User handlers
+  redmine_list_users: listUsers,
+  redmine_get_current_user: getCurrentUser,
+  redmine_get_user: getUser,
+  
+  // Time entry handlers
+  redmine_list_time_entries: listTimeEntries,
+  redmine_get_time_entry: getTimeEntry,
+  redmine_create_time_entry: createTimeEntry,
+  redmine_update_time_entry: updateTimeEntry,
+  redmine_delete_time_entry: deleteTimeEntry,
+  redmine_list_time_entry_activities: listTimeEntryActivities,
+  
+  // Wiki handlers
+  redmine_list_wiki_pages: listWikiPages,
+  redmine_get_wiki_page: getWikiPage,
+  redmine_create_or_update_wiki_page: createOrUpdateWikiPage,
+  redmine_delete_wiki_page: deleteWikiPage,
+
+  // Custom request handler
+  redmine_custom_request: customRequest,
+
+  // Helper handlers
+  redmine_list_statuses: listStatuses,
+  redmine_list_priorities: listPriorities,
+  redmine_list_trackers: listTrackers,
+
+  // Search handler
+  redmine_search: searchRedmine,
+};
