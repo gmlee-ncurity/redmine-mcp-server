@@ -57,6 +57,7 @@ export class RedmineClient {
   }
 
   private setupRetryInterceptor(): void {
+    if (!this.axios) return; // axios 인스턴스가 없으면 아무 작업도 하지 않음
     this.axios.interceptors.response.use(
       (response) => response,
       async (error) => {
