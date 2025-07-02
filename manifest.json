@@ -141,34 +141,20 @@
     {
       "name": "project_status",
       "description": "Get a comprehensive overview of project status",
-      "arguments": [
-        {
-          "name": "project_id",
-          "description": "Project identifier",
-          "required": true
-        }
-      ]
+      "arguments": ["project_id"],
+      "text": "Please provide a comprehensive overview of project ${arguments.project_id}. Include:\n- Current project status and progress\n- Open issues and their priorities\n- Recent activity and updates\n- Team members and their assignments\n- Upcoming milestones and deadlines\n- Any blockers or concerns"
     },
     {
       "name": "my_tasks",
       "description": "Show issues assigned to the current user",
-      "arguments": []
+      "arguments": [],
+      "text": "Show me all issues currently assigned to me. Include:\n- Issue priorities and statuses\n- Due dates and deadlines\n- Progress and completion status\n- Project associations\n- Recent updates or comments\nOrganize by priority and due date."
     },
     {
       "name": "time_report",
       "description": "Generate a time tracking report",
-      "arguments": [
-        {
-          "name": "from_date",
-          "description": "Start date (YYYY-MM-DD)",
-          "required": false
-        },
-        {
-          "name": "to_date",
-          "description": "End date (YYYY-MM-DD)",
-          "required": false
-        }
-      ]
+      "arguments": ["from_date", "to_date"],
+      "text": "Generate a detailed time tracking report for the period from ${arguments.from_date} to ${arguments.to_date}. Include:\n- Total hours logged by project\n- Time breakdown by activity type\n- Daily/weekly time distribution\n- Issues worked on and time spent\n- Productivity insights and patterns\n- Summary of accomplishments"
     }
   ],
   "user_config": {
