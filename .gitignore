@@ -48,3 +48,8 @@ Thumbs.db
 .yarn-integrity
 package-lock.json
 yarn.lock
+
+# DXT files
+*.dxt
+DXT_SUMMARY.md
+.dxtignore
