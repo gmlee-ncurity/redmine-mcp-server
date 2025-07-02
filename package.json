@@ -17,6 +17,8 @@
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "inspector": "mcp-inspector",
+    "validate-dxt": "node scripts/validate-dxt.js",
+    "predxt": "npm run build && npm run validate-dxt",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
