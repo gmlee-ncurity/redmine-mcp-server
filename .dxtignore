@@ -6,7 +6,9 @@ src/
 test/
 .git/
 .github/
+# Exclude root node_modules but keep dist/node_modules
 node_modules/
+!dist/node_modules/
 coverage/
 
 # Build artifacts (keep only dist/)

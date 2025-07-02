@@ -3,7 +3,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { 
   CallToolRequestSchema, 
   ListToolsRequestSchema,
-  Tool
+  ListResourcesRequestSchema,
+  ListPromptsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { config } from './config.js';
 import { tools, toolHandlers } from './tools/index.js';
@@ -20,6 +21,8 @@ export async function createRedmineServer(): Promise<Server> {
     {
       capabilities: {
         tools: {},
+        resources: {},
+        prompts: {},
       },
     }
   );
@@ -32,6 +35,20 @@ export async function createRedmineServer(): Promise<Server> {
         description: tool.description,
         inputSchema: tool.inputSchema,
       })),
+    };
+  });
+
+  // Register resources list handler
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    return {
+      resources: []
+    };
+  });
+
+  // Register prompts list handler  
+  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    return {
+      prompts: []
     };
   });
 
@@ -102,20 +119,27 @@ export async function runServer(): Promise<void> {
   console.error(`[${timestamp}] [INFO] Starting ${SERVER_NAME} v${SERVER_VERSION}...`);
   console.error(`[${timestamp}] [INFO] Connecting to Redmine at: ${config.redmine.url}`);
   
-  // Connection timeout for DXT environment
-  const connectionTimeout = 15000; // 15 seconds
-  
   try {
     const transport = new StdioServerTransport();
     const server = await createRedmineServer();
     
-    // Set up connection with timeout
-    const connectionPromise = server.connect(transport);
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Connection timeout')), connectionTimeout);
-    });
+    // Add comprehensive error handlers for transport
+    transport.onclose = () => {
+      console.error(`[${new Date().toISOString()}] [INFO] Transport closed gracefully`);
+    };
     
-    await Promise.race([connectionPromise, timeoutPromise]);
+    transport.onerror = (error) => {
+      console.error(`[${new Date().toISOString()}] [ERROR] Transport error:`, error);
+    };
+    
+    // Add server error handlers
+    server.onerror = (error) => {
+      console.error(`[${new Date().toISOString()}] [ERROR] Server error:`, error);
+    };
+    
+    // Connect with better error handling
+    console.error(`[${timestamp}] [INFO] Establishing MCP connection...`);
+    await server.connect(transport);
     
     console.error(`[${timestamp}] [INFO] ${SERVER_NAME} is running and ready for requests`);
     
@@ -124,9 +148,42 @@ export async function runServer(): Promise<void> {
       console.error(`[${timestamp}] [DEBUG] Tool names: ${Object.keys(toolHandlers).join(', ')}`);
     }
     
+    // Keep process alive by maintaining event loop activity
+    const keepAlive = setInterval(() => {}, 1000000);
+    
+    // Keep the process alive and handle stdin properly for MCP
+    process.stdin.setEncoding('utf8');
+    process.stdin.resume();
+    
+    // Handle stdin closure (when client disconnects)  
+    process.stdin.on('end', () => {
+      console.error(`[${new Date().toISOString()}] [INFO] Client disconnected (stdin closed)`);
+      process.exit(0);
+    });
+    
+    process.stdin.on('error', (error) => {
+      console.error(`[${new Date().toISOString()}] [ERROR] Stdin error:`, error);
+      process.exit(1);
+    });
+    
+    // Handle process termination gracefully
+    const cleanup = (signal: string) => {
+      console.error(`[${new Date().toISOString()}] [INFO] Received ${signal}, shutting down...`);
+      clearInterval(keepAlive);
+      transport.close?.();
+      process.exit(0);
+    };
+    
+    process.on('SIGINT', () => cleanup('SIGINT'));
+    process.on('SIGTERM', () => cleanup('SIGTERM'));
+    process.on('SIGQUIT', () => cleanup('SIGQUIT'));
+    
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown connection error';
     console.error(`[${timestamp}] [ERROR] Failed to start server: ${errorMsg}`);
+    if (error instanceof Error && error.stack) {
+      console.error(`[${timestamp}] [DEBUG] Stack trace:`, error.stack);
+    }
     throw error;
   }
 }

@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+// Buffer compatibility polyfill for Node.js environments
+if (Buffer.prototype && !Buffer.prototype.subarray) {
+  Buffer.prototype.subarray = Buffer.prototype.slice;
+}
+
 import { runServer } from './server.js';
 
 // Enhanced error handling for DXT environment
@@ -15,15 +20,6 @@ const logError = (context: string, error: unknown) => {
   }
 };
 
-// Graceful shutdown handler
-const shutdown = (signal: string) => {
-  console.error(`[${new Date().toISOString()}] [INFO] Received ${signal}, shutting down gracefully...`);
-  process.exit(0);
-};
-
-// Handle process signals for graceful shutdown
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Handle uncaught errors with better logging
 process.on('uncaughtException', (error) => {
@@ -72,6 +68,7 @@ const validateEnvironment = (): boolean => {
 const main = async () => {
   const timestamp = new Date().toISOString();
   console.error(`[${timestamp}] [INFO] Starting Redmine MCP Server v1.0.0`);
+  console.error(`[${timestamp}] [DEBUG] Process ID: ${process.pid}`);
   
   // Validate environment
   if (!validateEnvironment()) {

@@ -21,13 +21,14 @@
         "${__dirname}/dist/index.js"
       ],
       "env": {
+        "NODE_PATH": "${__dirname}/dist/node_modules",
         "REDMINE_URL": "${user_config.redmine_url}",
         "REDMINE_API_KEY": "${user_config.redmine_api_key}",
         "REDMINE_USERNAME": "${user_config.redmine_username}",
         "REDMINE_PASSWORD": "${user_config.redmine_password}",
         "REDMINE_SSL_VERIFY": "${user_config.ssl_verify}",
         "REDMINE_REQUEST_TIMEOUT": "${user_config.request_timeout}",
-        "LOG_LEVEL": "${user_config.log_level}"
+        "LOG_LEVEL": "debug"
       }
     }
   },
