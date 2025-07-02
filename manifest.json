@@ -1,0 +1,37 @@
+{
+  "dxt_version": "0.1",
+  "name": "Redmine MCP Server",
+  "description": "Connects Claude to your Redmine projects.",
+  "version": "1.0.0",
+  "author": {"name": "gmlee"},
+  "homepage": "https://github.com/your-org/mcp-server-redmine",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "REDMINE_URL": "${user_config.redmine_url}",
+        "REDMINE_API_KEY": "${user_config.redmine_api_key}"
+      }
+    }
+  },
+  "user_config": {
+    "redmine_url": {
+      "type": "string",
+      "title": "Redmine URL",
+      "description": "Redmine URL",
+      "required": true
+    },
+    "redmine_api_key": {
+      "type": "string",
+      "title": "Redmine API Key",
+      "description": "Redmine API Key",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}
