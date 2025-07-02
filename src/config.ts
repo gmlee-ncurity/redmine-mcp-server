@@ -1,8 +1,13 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables and print them for debugging
+const result = dotenv.config();
+if (result.error) {
+  console.error('[config] dotenv error:', result.error);
+} else {
+  console.error('[config] Loaded environment variables:', result.parsed);
+}
 
 // Configuration schema
 const configSchema = z.object({
