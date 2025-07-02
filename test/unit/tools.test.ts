@@ -138,7 +138,7 @@ describe('Issue Tools', () => {
 
       const result = await getIssue({ id: 123 });
 
-      expect(redmineClient.getIssue).toHaveBeenCalledWith(123, undefined);
+      expect(redmineClient.getIssue).toHaveBeenCalledWith(123, ['journals']);
       expect(result.content[0].text).toContain('#123 - Detailed Issue');
       expect(result.content[0].text).toContain('Assigned to: John Smith');
       expect(result.content[0].text).toContain('Progress: 50%');
