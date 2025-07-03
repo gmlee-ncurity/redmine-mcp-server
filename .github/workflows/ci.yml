@@ -168,4 +168,4 @@ jobs:
         🤖 Automated release via GitHub Actions" \
           redmine-mcp-server.dxt
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
