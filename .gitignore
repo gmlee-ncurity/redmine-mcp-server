@@ -46,7 +46,7 @@ Thumbs.db
 # npm/yarn
 .npm/
 .yarn-integrity
-package-lock.json
+# package-lock.json should be committed for CI/CD
 yarn.lock
 
 # DXT files
