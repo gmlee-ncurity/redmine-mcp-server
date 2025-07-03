@@ -149,7 +149,7 @@ export async function runServer(): Promise<void> {
     }
     
     // Keep process alive by maintaining event loop activity
-    const keepAlive = setInterval(() => {}, 1000000);
+    const keepAlive = globalThis.setInterval(() => {}, 1000000);
     
     // Keep the process alive and handle stdin properly for MCP
     process.stdin.setEncoding('utf8');
@@ -169,7 +169,7 @@ export async function runServer(): Promise<void> {
     // Handle process termination gracefully
     const cleanup = (signal: string) => {
       console.error(`[${new Date().toISOString()}] [INFO] Received ${signal}, shutting down...`);
-      clearInterval(keepAlive);
+      globalThis.clearInterval(keepAlive);
       transport.close?.();
       process.exit(0);
     };

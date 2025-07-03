@@ -1,6 +1,6 @@
 {
-  "name": "@ncurity/mcp-server-redmine",
-  "version": "1.0.0",
+  "name": "@gmlee-ncurity/mcp-server-redmine",
+  "version": "1.0.1",
   "description": "Model Context Protocol server for Redmine integration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -35,7 +35,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
     "axios": "^1.7.7",
-    "dotenv": "^16.4.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {

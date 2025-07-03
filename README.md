@@ -42,18 +42,24 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
 
 ## Installation
 
-### As a published npm package (recommended)
+### Global Installation (recommended)
 
 ```bash
-npm install -g @your-org/mcp-server-redmine
+npm install -g @gmlee-ncurity/mcp-server-redmine
+```
+
+### Direct Usage (no installation required)
+
+```bash
+npx @gmlee-ncurity/mcp-server-redmine
 ```
 
 ### For local development
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/mcp-server-redmine.git
-cd mcp-server-redmine
+git clone https://github.com/gmlee-ncurity/redmine-mcp-server.git
+cd redmine-mcp-server
 
 # Install dependencies
 npm install
@@ -66,7 +72,7 @@ npm run build
 
 ### Environment Variables
 
-Create a `.env` file based on `.env.example`:
+Configure the server using environment variables in your MCP client configuration:
 
 ```bash
 # Required
@@ -92,7 +98,7 @@ REDMINE_API_KEY=your-api-key-here
 2. Go to "My account" (top right)
 3. Click on "API access key" in the sidebar
 4. Click "Show" to reveal your API key
-5. Copy the API key to your `.env` file
+5. Use the API key in your MCP configuration
 
 ## Usage with Claude Desktop
 
@@ -105,7 +111,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@your-org/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine-instance.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -148,7 +154,7 @@ You can use this MCP server with VS Code extensions that support the Model Conte
   "cline.mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@your-org/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine-instance.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -263,6 +269,17 @@ This will start the MCP Inspector on http://localhost:5173
 ### SSL/TLS Issues
 - For self-signed certificates, set `REDMINE_SSL_VERIFY=false` (not recommended for production)
 - Provide the CA certificate path via `REDMINE_CA_CERT`
+
+## Desktop Extension (DXT) Support
+
+This MCP server is also packaged as a Desktop Extension (DXT) for seamless integration with supported applications:
+
+```bash
+# Build DXT package
+npm run build:bundle
+```
+
+The bundled version includes all dependencies and is optimized for distribution.
 
 ## Contributing
 

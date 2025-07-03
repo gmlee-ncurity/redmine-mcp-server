@@ -1,6 +1,6 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { redmineClient } from '../client/index.js';
-import { formatWikiPage, formatList } from '../utils/formatters.js';
+import { formatWikiPage } from '../utils/formatters.js';
 import { formatErrorResponse } from '../utils/errors.js';
 import { validateInput, wikiPageSchema } from '../utils/validators.js';
 

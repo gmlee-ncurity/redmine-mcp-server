@@ -2,7 +2,7 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { redmineClient } from '../client/index.js';
 import { formatProject, formatList } from '../utils/formatters.js';
 import { formatErrorResponse } from '../utils/errors.js';
-import { validateInput, parseId, paginationSchema } from '../utils/validators.js';
+import { validateInput, paginationSchema } from '../utils/validators.js';
 
 // List projects tool
 export const listProjectsTool: Tool = {

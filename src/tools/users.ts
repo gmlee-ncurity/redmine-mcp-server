@@ -81,7 +81,7 @@ export const getCurrentUserTool: Tool = {
   }
 };
 
-export async function getCurrentUser(input: unknown) {
+export async function getCurrentUser() {
   try {
     const response = await redmineClient.getCurrentUser();
     const content = `Current User:\n\n${formatUser(response.user)}`;

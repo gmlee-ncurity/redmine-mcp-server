@@ -1,13 +1,4 @@
 import { z } from 'zod';
-import dotenv from 'dotenv';
-
-// Load environment variables and print them for debugging
-const result = dotenv.config();
-if (result.error) {
-  console.error('[config] dotenv error:', result.error);
-} else {
-  console.error('[config] Loaded environment variables:', result.parsed);
-}
 
 // Configuration schema
 const configSchema = z.object({
@@ -57,7 +48,7 @@ export function loadConfig(): RedmineConfig {
         : 3,
     },
     logging: {
-      level: (process.env.LOG_LEVEL as any) || 'info',
+      level: (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || 'info',
       otelLevel: process.env.OTEL_LOG_LEVEL || 'none',
     },
   };

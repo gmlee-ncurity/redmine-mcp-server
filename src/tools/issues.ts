@@ -1,8 +1,7 @@
-import { z } from 'zod';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { redmineClient } from '../client/index.js';
 import { formatIssue, formatList, truncateText } from '../utils/formatters.js';
-import { handleAxiosError, formatErrorResponse } from '../utils/errors.js';
+import { formatErrorResponse } from '../utils/errors.js';
 import { 
   validateInput, 
   parseId,
@@ -123,10 +122,11 @@ export const getIssueTool: Tool = {
 
 export async function getIssue(input: unknown) {
   try {
-    let { id, include } = input as { id: number; include?: string[] };
+    const { id, include: inputInclude } = input as { id: number; include?: string[] };
     const issueId = parseId(id);
 
     // journals가 포함되어 있지 않으면 추가
+    let include = inputInclude;
     if (!include) {
       include = ['journals'];
     } else if (!include.includes('journals')) {

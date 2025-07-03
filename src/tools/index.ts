@@ -124,7 +124,7 @@ export const listStatusesTool: Tool = {
   }
 };
 
-export async function listStatuses(input: unknown) {
+export async function listStatuses() {
   try {
     const response = await redmineClient.listIssueStatuses();
     const statuses = response.issue_statuses || [];
@@ -161,7 +161,7 @@ export const listPrioritiesTool: Tool = {
   }
 };
 
-export async function listPriorities(input: unknown) {
+export async function listPriorities() {
   try {
     const response = await redmineClient.listIssuePriorities();
     const priorities = response.issue_priorities || [];
@@ -198,7 +198,7 @@ export const listTrackersTool: Tool = {
   }
 };
 
-export async function listTrackers(input: unknown) {
+export async function listTrackers() {
   try {
     const response = await redmineClient.listTrackers();
     const trackers = response.trackers || [];
@@ -316,7 +316,7 @@ export const tools: Tool[] = [
 ];
 
 // Export tool handlers map
-export const toolHandlers: Record<string, (input: unknown) => Promise<any>> = {
+export const toolHandlers: Record<string, (input?: unknown) => Promise<any>> = {
   // Issue handlers
   redmine_list_issues: listIssues,
   redmine_get_issue: getIssue,

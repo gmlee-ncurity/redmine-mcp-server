@@ -35,9 +35,9 @@ By participating in this project, you agree to abide by our Code of Conduct:
 - Git
 
 ### Environment Setup
-1. Copy `.env.example` to `.env`
-2. Configure your test Redmine instance credentials
-3. It's recommended to use a dedicated test Redmine instance
+1. Set environment variables for your test Redmine instance
+2. It's recommended to use a dedicated test Redmine instance
+3. Configure variables in your development environment or test runner
 
 ### Running Tests
 ```bash

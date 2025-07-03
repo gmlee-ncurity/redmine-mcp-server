@@ -299,7 +299,7 @@ export const listTimeEntryActivitiesTool: Tool = {
   }
 };
 
-export async function listTimeEntryActivities(input: unknown) {
+export async function listTimeEntryActivities() {
   try {
     const response = await redmineClient.listTimeEntryActivities();
     const activities = response.time_entry_activities || [];

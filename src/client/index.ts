@@ -11,7 +11,6 @@ import type {
   IssueQuery,
   TimeEntryQuery,
   RedmineResponse,
-  ErrorResponse,
   IssueStatus,
   IssuePriority,
   Tracker,

@@ -201,15 +201,9 @@ Location of config file:
 | `REDMINE_MAX_RETRIES` | Max retry attempts | `3` |
 | `LOG_LEVEL` | Logging level | `info` |
 
-### Using .env File
+### Configuration in MCP Clients
 
-Create a `.env` file in the project root:
-
-```bash
-REDMINE_URL=https://redmine.company.com
-REDMINE_API_KEY=your-api-key-here
-LOG_LEVEL=debug
-```
+Environment variables are configured directly in your MCP client configuration. No `.env` file is needed or used.
 
 ## SSL/TLS Configuration
 

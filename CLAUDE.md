@@ -52,7 +52,7 @@ All tools follow a consistent pattern:
 - Comprehensive parameter documentation
 
 ### Configuration System
-- Environment variables loaded via dotenv
+- Environment variables loaded from process.env (no .env file dependency)
 - Zod schema validation with detailed error messages
 - Supports both API key and basic authentication
 - Configurable SSL verification and CA certificates
@@ -123,7 +123,7 @@ When adding tests:
 ### MCP Client Integration
 - Claude Desktop: Use npx with published package or local node execution
 - VS Code: Compatible with Cline extension and other MCP-enabled extensions
-- Configuration via environment variables in MCP server config
+- Configuration via environment variables in MCP server config (no .env file needed)
 
 ### Redmine Compatibility
 - Requires Redmine instance with REST API enabled

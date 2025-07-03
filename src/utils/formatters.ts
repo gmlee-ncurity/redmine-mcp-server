@@ -142,7 +142,7 @@ export function formatList<T>(
   formatter: (item: T) => string,
   separator: string = '\n\n'
 ): string {
-  return items.map(formatter).join(separator);
+  return items.map((item) => formatter(item)).join(separator);
 }
 
 export function truncateText(text: string, maxLength: number = 500): string {

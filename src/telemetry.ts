@@ -31,7 +31,7 @@ class Telemetry {
 
     // In production, you would send this to a telemetry service
     if (config.logging.level === 'debug') {
-      console.debug('Telemetry event:', event);
+      console.error('Telemetry event:', event);
     }
   }
 
@@ -76,13 +76,13 @@ export const telemetry = new Telemetry();
 export function trackApiCall(
   endpoint: string,
   method: string
-): { start: () => void; end: (statusCode: number) => void } {
+): { start: () => void; end: (_statusCode: number) => void } {
   const startTime = Date.now();
 
   return {
     start: () => {
       if (config.logging.level === 'debug') {
-        console.debug(`API Call: ${method} ${endpoint}`);
+        console.error(`API Call: ${method} ${endpoint}`);
       }
     },
     end: (statusCode: number) => {
