@@ -28,6 +28,18 @@ Always run before committing:
 2. `npm run test` - Ensure tests pass
 3. `npm run build` - Verify build succeeds
 
+### CI/CD Workflow Monitoring
+When pushing changes to the repository, monitor the automated workflow:
+1. **Check workflow status**: `gh run list --repo gmlee-ncurity/redmine-mcp-server --limit 3`
+2. **Watch active workflow**: `gh run watch <run-id> --repo gmlee-ncurity/redmine-mcp-server`
+3. **View failed logs**: `gh run view --log-failed --job=<job-id> --repo gmlee-ncurity/redmine-mcp-server`
+4. **Monitor workflow URL**: https://github.com/gmlee-ncurity/redmine-mcp-server/actions
+
+The CI/CD pipeline includes:
+- **Test Jobs**: Linting, testing, and building on Node.js 20.x and 22.x
+- **Publish Job**: DXT building, NPM publishing, and GitHub releases (on version changes)
+- **DXT Packaging**: Automated desktop extension creation and release asset upload
+
 ## Architecture Overview
 
 ### Core Components
