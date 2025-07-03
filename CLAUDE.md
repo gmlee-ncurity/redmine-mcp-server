@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Branch Strategy**: Development work should be done on the `develop` branch. Releases are created by merging `develop` to `main`.
+
 ## Project Overview
 
 This is a Model Context Protocol (MCP) server for Redmine integration, written in TypeScript using ES modules. It enables AI assistants to interact with Redmine project management systems through a comprehensive REST API integration.
