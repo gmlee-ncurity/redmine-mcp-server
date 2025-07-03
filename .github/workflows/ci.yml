@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
   test:
@@ -44,6 +44,49 @@ jobs:
       with:
         file: ./coverage/lcov.info
         fail_ci_if_error: false
+
+  develop-build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Install DXT CLI
+      run: npm install -g @anthropic-ai/dxt
+    
+    - name: Build project
+      run: npm run build
+    
+    - name: Build DXT bundle
+      run: npm run build:bundle
+    
+    - name: Validate DXT structure
+      run: npm run validate-dxt
+    
+    - name: Package DXT (development)
+      run: dxt pack . redmine-mcp-server-develop.dxt
+    
+    - name: Development build summary
+      run: |
+        echo "🔧 Development build completed successfully!"
+        echo "✅ TypeScript compilation: PASSED"
+        echo "✅ DXT validation: PASSED"
+        echo "✅ DXT packaging: PASSED"
+        echo ""
+        echo "📝 This is a development build - no publishing performed."
+        echo "🚀 To release: merge this branch to main via Pull Request"
 
   publish:
     needs: test

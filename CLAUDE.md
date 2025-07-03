@@ -22,23 +22,70 @@ This is a Model Context Protocol (MCP) server for Redmine integration, written i
 - `npm run test:coverage` - Run with coverage reports (80% requirement)
 - Individual test files can be run with: `npx vitest src/path/to/test.ts`
 
-### Development Workflow
-Always run before committing:
+### Git Branching Strategy
+This project uses a **Git Flow** branching model with two main branches:
+
+#### Branch Structure
+- **`main` branch**: Production-ready code, triggers releases
+- **`develop` branch**: Integration branch for features (default branch)
+
+#### Development Workflow
+**Daily Development (on `develop` branch):**
 1. `npm run lint` - Check code style
 2. `npm run test` - Ensure tests pass
 3. `npm run build` - Verify build succeeds
+4. Push to `develop` branch for CI validation
+
+**Release Workflow (from `develop` to `main`):**
+1. Create Pull Request from `develop` to `main`
+2. Review and merge PR to trigger release
+3. Automated release publishes to NPM and creates GitHub release
 
 ### CI/CD Workflow Monitoring
-When pushing changes to the repository, monitor the automated workflow:
+Monitor workflows based on the branch you're working with:
+
+#### Commands for Monitoring
 1. **Check workflow status**: `gh run list --repo gmlee-ncurity/redmine-mcp-server --limit 3`
 2. **Watch active workflow**: `gh run watch <run-id> --repo gmlee-ncurity/redmine-mcp-server`
 3. **View failed logs**: `gh run view --log-failed --job=<job-id> --repo gmlee-ncurity/redmine-mcp-server`
 4. **Monitor workflow URL**: https://github.com/gmlee-ncurity/redmine-mcp-server/actions
 
-The CI/CD pipeline includes:
+#### Branch-Specific CI/CD Behavior
+**`develop` branch pushes trigger:**
 - **Test Jobs**: Linting, testing, and building on Node.js 20.x and 22.x
-- **Publish Job**: DXT building, NPM publishing, and GitHub releases (on version changes)
-- **DXT Packaging**: Automated desktop extension creation and release asset upload
+- **Develop Build Job**: DXT validation and packaging (development build)
+- **No Publishing**: Development builds don't publish to NPM or create releases
+
+**`main` branch pushes (via merged PR) trigger:**
+- **Test Jobs**: Full test suite validation
+- **Publish Job**: NPM publishing, GitHub release creation, DXT asset upload
+- **Release Automation**: Version detection, DXT packaging, and distribution
+
+**Pull Requests trigger:**
+- **Test Jobs Only**: Validates proposed changes without publishing
+
+#### Creating Release Pull Requests
+To release changes from `develop` to `main`:
+
+```bash
+# 1. Ensure you're on develop with latest changes
+git checkout develop
+git pull origin develop
+
+# 2. Bump version in package.json and manifest.json
+npm version patch  # or minor, major
+
+# 3. Update manifest.json version to match package.json
+# Edit manifest.json manually to match the new version
+
+# 4. Commit version bump
+git add package.json manifest.json
+git commit -m "Bump version to vX.X.X for release"
+
+# 5. Push and create PR
+git push origin develop
+gh pr create --base main --head develop --title "Release vX.X.X"
+```
 
 ## Architecture Overview
 
