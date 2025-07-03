@@ -101,43 +101,28 @@ jobs:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       continue-on-error: true
     
-    - name: Create GitHub Release
+    - name: Create GitHub Release with DXT
       if: steps.version-check.outputs.changed == 'true'
-      id: create_release
-      uses: actions/create-release@v1
+      run: |
+        # Create release
+        gh release create v${{ steps.version-check.outputs.current }} \
+          --title "Release v${{ steps.version-check.outputs.current }}" \
+          --notes "## Changes
+        - Version bump to ${{ steps.version-check.outputs.current }}
+        - All tests passing
+        - DXT package included for desktop extensions
+
+        ## Installation
+
+        ### NPM Package
+        \`\`\`bash
+        npm install -g @gmlee-ncurity/mcp-server-redmine@${{ steps.version-check.outputs.current }}
+        \`\`\`
+
+        ### Desktop Extension (DXT)
+        Download the \`redmine-mcp-server.dxt\` file from the assets below and install it in your supported desktop application.
+
+        🤖 Automated release via GitHub Actions" \
+          redmine-mcp-server.dxt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.version-check.outputs.current }}
-        release_name: Release v${{ steps.version-check.outputs.current }}
-        body: |
-          ## Changes
-          - Version bump to ${{ steps.version-check.outputs.current }}
-          - All tests passing
-          - Successfully published to npm
-          - DXT package included for desktop extensions
-
-          ## Installation
-
-          ### NPM Package
-          ```bash
-          npm install -g @gmlee-ncurity/mcp-server-redmine@${{ steps.version-check.outputs.current }}
-          ```
-
-          ### Desktop Extension (DXT)
-          Download the `redmine-mcp-server.dxt` file from the assets below and install it in your supported desktop application.
-
-          🤖 Automated release via GitHub Actions
-        draft: false
-        prerelease: false
-    
-    - name: Upload DXT Asset
-      if: steps.version-check.outputs.changed == 'true'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./redmine-mcp-server.dxt
-        asset_name: redmine-mcp-server.dxt
-        asset_content_type: application/octet-stream
