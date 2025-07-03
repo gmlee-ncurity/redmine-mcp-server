@@ -95,10 +95,11 @@ jobs:
         fi
     
     - name: Publish to npm
-      if: steps.version-check.outputs.changed == 'true'
+      if: steps.version-check.outputs.changed == 'true' && secrets.NPM_TOKEN != ''
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      continue-on-error: true
     
     - name: Create GitHub Release
       if: steps.version-check.outputs.changed == 'true'
