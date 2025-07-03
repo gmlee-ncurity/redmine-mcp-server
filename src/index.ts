@@ -55,7 +55,12 @@ const validateEnvironment = (): boolean => {
   
   // Validate URL format
   try {
-    new globalThis.URL(process.env.REDMINE_URL!);
+    const redmineUrl = process.env.REDMINE_URL;
+    if (!redmineUrl) {
+      console.error(`[${new Date().toISOString()}] [ERROR] REDMINE_URL is not set`);
+      return false;
+    }
+    new globalThis.URL(redmineUrl);
   } catch {
     console.error(`[${new Date().toISOString()}] [ERROR] Invalid REDMINE_URL format: ${process.env.REDMINE_URL}`);
     return false;

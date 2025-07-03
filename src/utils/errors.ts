@@ -8,6 +8,9 @@ export class RedmineError extends Error {
   ) {
     super(message);
     this.name = 'RedmineError';
+    // Store status code and errors for error handling
+    this.statusCode = statusCode;
+    this.errors = errors;
   }
 }
 
@@ -22,6 +25,8 @@ export class ValidationError extends Error {
   constructor(message: string, public field?: string) {
     super(message);
     this.name = 'ValidationError';
+    // Store field for validation error handling
+    this.field = field;
   }
 }
 
@@ -29,7 +34,7 @@ export function handleAxiosError(error: AxiosError): never {
   if (error.response) {
     // Server responded with error status
     const statusCode = error.response.status;
-    const data = error.response.data as any;
+    const data = error.response.data as Record<string, unknown>;
     
     let message = `Redmine API error (${statusCode})`;
     

@@ -9,6 +9,8 @@ import {
   updateIssueSchema,
   issueQuerySchema 
 } from '../utils/validators.js';
+import type { RedmineIssue } from '../client/types.js';
+import type { z } from 'zod';
 
 // List issues tool
 export const listIssuesTool: Tool = {
@@ -66,7 +68,7 @@ export async function listIssues(input: unknown) {
     const params = validateInput(issueQuerySchema, input);
     const response = await redmineClient.listIssues(params);
     
-    const issues: any[] = Array.isArray(response.issues) ? response.issues : [];
+    const issues: RedmineIssue[] = Array.isArray(response.issues) ? response.issues : [];
     const total = response.total_count || issues.length;
     
     let content = `Found ${total} issue(s)`;
@@ -233,7 +235,7 @@ export async function createIssue(input: unknown) {
     const issueData = validateInput(createIssueSchema, input);
     
     // Transform the data to match Redmine API format
-    const apiData: any = {
+    const apiData: Record<string, unknown> = {
       project_id: issueData.project_id,
       subject: issueData.subject,
       description: issueData.description,
@@ -353,11 +355,11 @@ export const updateIssueTool: Tool = {
 
 export async function updateIssue(input: unknown) {
   try {
-    const { id, ...updateData } = input as any;
+    const { id, ...updateData } = input as { id: number; [key: string]: unknown };
     const issueId = parseId(id);
     const validatedData = validateInput(updateIssueSchema, updateData);
     
-    await redmineClient.updateIssue(issueId, validatedData as any);
+    await redmineClient.updateIssue(issueId, validatedData as z.infer<typeof updateIssueSchema>);
     
     // Fetch updated issue to show current state
     const response = await redmineClient.getIssue(issueId);

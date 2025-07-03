@@ -4,6 +4,7 @@ import { redmineClient } from '../client/index.js';
 import { formatUser, formatList } from '../utils/formatters.js';
 import { formatErrorResponse } from '../utils/errors.js';
 import { validateInput, parseId, paginationSchema } from '../utils/validators.js';
+import type { RedmineUser } from '../client/types.js';
 
 // List users tool
 export const listUsersTool: Tool = {
@@ -42,7 +43,7 @@ export async function listUsers(input: unknown) {
     const params = validateInput(listUsersSchema, input || {});
     const response = await redmineClient.listUsers(params);
     
-    const users: any[] = Array.isArray(response.users) ? response.users : [];
+    const users: RedmineUser[] = Array.isArray(response.users) ? response.users : [];
     const total = response.total_count || users.length;
     
     let content = `Found ${total} user(s)`;
@@ -127,20 +128,20 @@ export async function getUser(input: unknown) {
     let content = formatUser(response.user);
     
     // Add additional included information
-    if (include?.includes('memberships') && (response.user as any).memberships) {
+    if (include?.includes('memberships') && 'memberships' in response.user && response.user.memberships) {
       content += '\n\nMemberships:';
-      (response.user as any).memberships.forEach((membership: any) => {
+      (response.user as RedmineUser & { memberships: Array<{ project: { name: string }; roles?: Array<{ name: string }> }> }).memberships.forEach((membership) => {
         content += `\n  - ${membership.project.name}`;
         if (membership.roles) {
-          const roles = membership.roles.map((r: any) => r.name).join(', ');
+          const roles = membership.roles.map((r) => r.name).join(', ');
           content += ` (${roles})`;
         }
       });
     }
     
-    if (include?.includes('groups') && (response.user as any).groups) {
+    if (include?.includes('groups') && 'groups' in response.user && response.user.groups) {
       content += '\n\nGroups:';
-      (response.user as any).groups.forEach((group: any) => {
+      (response.user as RedmineUser & { groups: Array<{ id: number; name: string }> }).groups.forEach((group) => {
         content += `\n  - ${group.name} (ID: ${group.id})`;
       });
     }

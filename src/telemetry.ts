@@ -6,7 +6,7 @@ import { config } from './config.js';
 
 export interface TelemetryEvent {
   name: string;
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
   timestamp: Date;
 }
 
@@ -18,7 +18,7 @@ class Telemetry {
     this.enabled = config.logging.otelLevel !== 'none';
   }
 
-  logEvent(name: string, properties?: Record<string, any>): void {
+  logEvent(name: string, properties?: Record<string, unknown>): void {
     if (!this.enabled) return;
 
     const event: TelemetryEvent = {
@@ -52,7 +52,7 @@ class Telemetry {
     });
   }
 
-  logError(error: Error, context?: Record<string, any>): void {
+  logError(error: Error, context?: Record<string, unknown>): void {
     this.logEvent('error', {
       message: error.message,
       stack: error.stack,
@@ -76,7 +76,8 @@ export const telemetry = new Telemetry();
 export function trackApiCall(
   endpoint: string,
   method: string
-): { start: () => void; end: (_statusCode: number) => void } {
+  // eslint-disable-next-line no-unused-vars
+): { start: () => void; end: (arg: number) => void } {
   const startTime = Date.now();
 
   return {
@@ -87,6 +88,10 @@ export function trackApiCall(
     },
     end: (statusCode: number) => {
       const duration = Date.now() - startTime;
+      // Log the API call completion with status code
+      if (config.logging.level === 'debug') {
+        console.error(`API Call completed: ${method} ${endpoint} - ${statusCode} (${duration}ms)`);
+      }
       telemetry.logApiCall(endpoint, method, statusCode, duration);
     },
   };

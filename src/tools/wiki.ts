@@ -160,7 +160,7 @@ export const createOrUpdateWikiPageTool: Tool = {
 
 export async function createOrUpdateWikiPage(input: unknown) {
   try {
-    const { project_id, title, ...pageData } = input as any;
+    const { project_id, title, ...pageData } = input as { project_id: string; title: string; [key: string]: unknown };
     const validatedData = validateInput(wikiPageSchema, pageData);
     
     await redmineClient.createOrUpdateWikiPage(project_id, title, validatedData);

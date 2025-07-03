@@ -139,6 +139,7 @@ export function formatWikiPage(page: WikiPage): string {
 
 export function formatList<T>(
   items: T[],
+  // eslint-disable-next-line no-unused-vars
   formatter: (item: T) => string,
   separator: string = '\n\n'
 ): string {

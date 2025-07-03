@@ -94,11 +94,11 @@ export async function customRequest(input: unknown) {
     const { method, path, data, params } = input as {
       method: string;
       path: string;
-      data?: any;
-      params?: any;
+      data?: unknown;
+      params?: unknown;
     };
     
-    const response = await redmineClient.customRequest(method, path, data, params);
+    const response = await redmineClient.customRequest(method, path, data, params as Record<string, unknown>);
     
     return {
       content: [{
@@ -250,16 +250,16 @@ export const searchTool: Tool = {
   }
 };
 
-export async function searchRedmine(input: any) {
+export async function searchRedmine(input: unknown) {
   try {
-    const params: any = { ...input };
-    const response = await redmineClient.customRequest('GET', '/search.json', undefined, params);
-    const results = response.results || [];
-    const total = response.total_count || results.length;
+    const params: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+    const response = await redmineClient.customRequest('GET', '/search.json', undefined, params) as Record<string, unknown>;
+    const results = (response.results as Array<Record<string, unknown>>) || [];
+    const total = (response.total_count as number) || results.length;
     let content = `Found ${total} result(s) for "${params.q}"\n\n`;
     if (results.length > 0) {
-      results.forEach((item: any, idx: number) => {
-        content += `${idx + 1}. [${item.type}] ${item.title}\n   URL: ${item.url}\n   Description: ${item.description?.slice(0, 200) || ''}\n   Date: ${item.datetime}\n\n`;
+      results.forEach((item: Record<string, unknown>, idx: number) => {
+        content += `${idx + 1}. [${item.type}] ${item.title}\n   URL: ${item.url}\n   Description: ${typeof item.description === 'string' ? item.description.slice(0, 200) : ''}\n   Date: ${item.datetime}\n\n`;
       });
     } else {
       content += 'No results found.';
@@ -316,7 +316,8 @@ export const tools: Tool[] = [
 ];
 
 // Export tool handlers map
-export const toolHandlers: Record<string, (input?: unknown) => Promise<any>> = {
+// eslint-disable-next-line no-unused-vars
+export const toolHandlers: Record<string, (_input?: unknown) => Promise<unknown>> = {
   // Issue handlers
   redmine_list_issues: listIssues,
   redmine_get_issue: getIssue,

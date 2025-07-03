@@ -3,6 +3,7 @@ import { redmineClient } from '../client/index.js';
 import { formatProject, formatList } from '../utils/formatters.js';
 import { formatErrorResponse } from '../utils/errors.js';
 import { validateInput, paginationSchema } from '../utils/validators.js';
+import type { RedmineProject } from '../client/types.js';
 
 // List projects tool
 export const listProjectsTool: Tool = {
@@ -28,7 +29,7 @@ export async function listProjects(input: unknown) {
     const params = validateInput(paginationSchema, input || {});
     const response = await redmineClient.listProjects(params);
     
-    const projects: any[] = Array.isArray(response.projects) ? response.projects : [];
+    const projects: RedmineProject[] = Array.isArray(response.projects) ? response.projects : [];
     const total = response.total_count || projects.length;
     
     let content = `Found ${total} project(s)`;

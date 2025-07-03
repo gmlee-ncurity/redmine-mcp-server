@@ -81,7 +81,8 @@ export async function createRedmineServer(): Promise<Server> {
       }
       
       // Validate result structure
-      if (!result || !result.content || !Array.isArray(result.content)) {
+      const resultObj = result as { content?: unknown; isError?: boolean };
+      if (!result || !resultObj.content || !Array.isArray(resultObj.content)) {
         throw new Error(`Tool ${name} returned invalid result structure`);
       }
       

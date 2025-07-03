@@ -9,6 +9,7 @@ import {
   updateTimeEntrySchema,
   timeEntryQuerySchema 
 } from '../utils/validators.js';
+import type { TimeEntry } from '../client/types.js';
 
 // List time entries tool
 export const listTimeEntriesTool: Tool = {
@@ -62,7 +63,7 @@ export async function listTimeEntries(input: unknown) {
     const params = validateInput(timeEntryQuerySchema, input || {});
     const response = await redmineClient.listTimeEntries(params);
     
-    const entries: any[] = Array.isArray(response.time_entries) ? response.time_entries : [];
+    const entries: TimeEntry[] = Array.isArray(response.time_entries) ? response.time_entries : [];
     const total = response.total_count || entries.length;
     
     let content = `Found ${total} time entry(ies)`;
@@ -71,7 +72,7 @@ export async function listTimeEntries(input: unknown) {
     }
     
     // Calculate total hours
-    const totalHours = entries.reduce((sum: number, entry: any) => sum + entry.hours, 0);
+    const totalHours = entries.reduce((sum: number, entry: TimeEntry) => sum + entry.hours, 0);
     content += `\nTotal hours: ${totalHours.toFixed(2)}\n\n`;
     
     if (entries.length > 0) {
@@ -174,7 +175,7 @@ export async function createTimeEntry(input: unknown) {
   try {
     const entryData = validateInput(createTimeEntrySchema, input);
     
-    const response = await redmineClient.createTimeEntry(entryData as any);
+    const response = await redmineClient.createTimeEntry(entryData as Partial<TimeEntry>);
     const content = `Time entry created successfully!\n\n${formatTimeEntry(response.time_entry)}`;
     
     return {
@@ -234,11 +235,11 @@ export const updateTimeEntryTool: Tool = {
 
 export async function updateTimeEntry(input: unknown) {
   try {
-    const { id, ...updateData } = input as any;
+    const { id, ...updateData } = input as { id: number; [key: string]: unknown };
     const entryId = parseId(id);
     const validatedData = validateInput(updateTimeEntrySchema, updateData);
     
-    await redmineClient.updateTimeEntry(entryId, validatedData as any);
+    await redmineClient.updateTimeEntry(entryId, validatedData as Partial<TimeEntry>);
     
     // Fetch updated entry to show current state
     const response = await redmineClient.getTimeEntry(entryId);

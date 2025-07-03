@@ -32,7 +32,8 @@ export class RedmineClient {
 
     // Set up authentication
     if (config.redmine.apiKey) {
-      axiosConfig.headers!['X-Redmine-API-Key'] = config.redmine.apiKey;
+      axiosConfig.headers = axiosConfig.headers || {};
+      axiosConfig.headers['X-Redmine-API-Key'] = config.redmine.apiKey;
     } else if (config.redmine.username && config.redmine.password) {
       axiosConfig.auth = {
         username: config.redmine.username,
@@ -217,7 +218,7 @@ export class RedmineClient {
   }
 
   // Custom API Request
-  async customRequest(method: string, path: string, data?: any, params?: any): Promise<any> {
+  async customRequest(method: string, path: string, data?: unknown, params?: Record<string, unknown>): Promise<unknown> {
     const response = await this.axios.request({
       method,
       url: path,
