@@ -281,6 +281,45 @@ npm run build:bundle
 
 The bundled version includes all dependencies and is optimized for distribution.
 
+## Development & Release
+
+### Automated Release Process
+
+This project includes automated release scripts for easy version management and publishing:
+
+```bash
+# Release with patch version bump (1.0.1 -> 1.0.2)
+npm run release
+
+# Release with minor version bump (1.0.1 -> 1.1.0)
+npm run release:minor
+
+# Release with major version bump (1.0.1 -> 2.0.0)
+npm run release:major
+
+# Or use the script directly with options
+./scripts/release.sh minor --skip-tests
+```
+
+The automated release process:
+1. 🔄 Bumps the version in package.json
+2. ✅ Runs all tests with proper environment setup
+3. 🔍 Runs linting checks
+4. 🔨 Builds the project
+5. 📝 Commits changes with standardized message
+6. 🚀 Pushes to repository
+7. 📦 Publishes to npm registry
+8. 🏷️ Creates GitHub release (if `gh` CLI is available)
+
+### CI/CD Pipeline
+
+GitHub Actions automatically:
+- Runs tests on Node.js 20.x and 22.x
+- Checks linting and builds
+- Auto-publishes to npm when version changes
+- Creates GitHub releases
+- Uploads test coverage reports
+
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.

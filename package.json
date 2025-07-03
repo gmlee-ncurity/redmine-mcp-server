@@ -20,7 +20,11 @@
     "inspector": "mcp-inspector",
     "validate-dxt": "node scripts/validate-dxt.js",
     "predxt": "npm run build:bundle && npm run validate-dxt",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "release": "scripts/release.sh",
+    "release:minor": "scripts/release.sh minor",
+    "release:major": "scripts/release.sh major",
+    "release:patch": "scripts/release.sh patch"
   },
   "keywords": [
     "mcp",
