@@ -67,7 +67,7 @@ jobs:
       run: npm install
     
     - name: Install DXT CLI
-      run: npm install -g @modelcontextprotocol/dxt
+      run: npm install -g @anthropic-ai/dxt
     
     - name: Build project
       run: npm run build
