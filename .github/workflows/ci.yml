@@ -69,6 +69,15 @@ jobs:
     - name: Build project
       run: npm run build
     
+    - name: Build DXT bundle
+      run: npm run build:bundle
+    
+    - name: Validate DXT structure
+      run: npm run validate-dxt
+    
+    - name: Package DXT
+      run: dxt pack . redmine-mcp-server.dxt
+    
     - name: Check if version changed
       id: version-check
       run: |
@@ -90,6 +99,7 @@ jobs:
     
     - name: Create GitHub Release
       if: steps.version-check.outputs.changed == 'true'
+      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,12 +111,29 @@ jobs:
           - Version bump to ${{ steps.version-check.outputs.current }}
           - All tests passing
           - Successfully published to npm
+          - DXT package included for desktop extensions
 
           ## Installation
+
+          ### NPM Package
           ```bash
           npm install -g @gmlee-ncurity/mcp-server-redmine@${{ steps.version-check.outputs.current }}
           ```
 
+          ### Desktop Extension (DXT)
+          Download the `redmine-mcp-server.dxt` file from the assets below and install it in your supported desktop application.
+
           🤖 Automated release via GitHub Actions
         draft: false
         prerelease: false
+    
+    - name: Upload DXT Asset
+      if: steps.version-check.outputs.changed == 'true'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./redmine-mcp-server.dxt
+        asset_name: redmine-mcp-server.dxt
+        asset_content_type: application/octet-stream
