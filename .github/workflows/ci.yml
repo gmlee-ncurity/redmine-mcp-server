@@ -95,7 +95,7 @@ jobs:
         fi
     
     - name: Publish to npm
-      if: steps.version-check.outputs.changed == 'true' && secrets.NPM_TOKEN != ''
+      if: steps.version-check.outputs.changed == 'true'
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
