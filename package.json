@@ -38,6 +38,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.24.2",
     "axios": "^1.13.2",
+    "express": "^5.1.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
