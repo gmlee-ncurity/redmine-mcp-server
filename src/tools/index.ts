@@ -348,7 +348,6 @@ export const tools: Tool[] = [
 ];
 
 // Export tool handlers map
-// eslint-disable-next-line no-unused-vars
 export const toolHandlers: Record<string, (_input?: unknown) => Promise<unknown>> = {
   // Issue handlers
   redmine_list_issues: listIssues,
