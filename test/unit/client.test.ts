@@ -386,6 +386,27 @@ describe('RedmineClient', () => {
       );
       expect(result).toEqual(mockResponse.data);
     });
+
+    it('should encode wiki page path segments', async () => {
+      const mockResponse = {
+        data: {
+          wiki_page: {
+            title: 'A/B Page',
+            text: 'Encoded content',
+            version: 1,
+          },
+        },
+      };
+
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
+
+      const result = await client.getWikiPage('test project', 'A/B Page');
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/projects/test%20project/wiki/A%2FB%20Page.json'
+      );
+      expect(result).toEqual(mockResponse.data);
+    });
   });
 
   describe('updateJournal', () => {
