@@ -41,7 +41,7 @@ This project uses a **Git Flow** branching model with two main branches:
 **Release Workflow (from `develop` to `main`):**
 1. Create Pull Request from `develop` to `main`
 2. Review and merge PR to trigger release
-3. Automated release publishes to NPM
+3. Automated release publishes to NPM when the package version has changed
 
 ### CI/CD Workflow Monitoring
 Monitor workflows based on the branch you're working with:
@@ -55,16 +55,44 @@ Monitor workflows based on the branch you're working with:
 #### Branch-Specific CI/CD Behavior
 **`develop` branch pushes trigger:**
 - **Test Jobs**: Linting, testing, and building on Node.js 20.x, 22.x, and 24.x
-- **No Publishing**: Development builds don't publish to NPM or create releases
+- **Beta Publish Job**: Publishes to NPM with the `beta` dist-tag only when the package version contains `beta` and differs from the published beta version
+- **No Stable Release**: Development builds don't create stable releases
 
 **`main` branch pushes (via merged PR) trigger:**
 - **Test Jobs**: Full test suite validation
-- **Publish Job**: NPM publishing
+- **Publish Job**: Publishes to NPM when the package version differs from the published stable version
 
 **Pull Requests trigger:**
 - **Test Jobs Only**: Validates proposed changes without publishing
 
+#### Versioning Strategy (Beta / Stable)
+
+This fork can use npm dist-tag based versioning to separate beta and stable releases:
+
+- **`develop` branch**: Publishes beta only when the package version uses a `-beta.N` suffix (e.g., `1.1.0-beta.0`)
+- **`main` branch**: Stable versions without suffix (e.g., `1.1.0`)
+- **npm dist-tag**: `latest` for stable, `beta` for pre-release
+
+**Version flow example:**
+```
+develop: 1.1.0-beta.0 → 1.1.0-beta.1 → 1.1.0-beta.2
+                                              ↓ (PR merge to main)
+main:                                       1.1.0 (stable release)
+develop: 1.2.0-beta.0  ← next cycle starts
+```
+
+**Bumping beta versions on `develop`:**
+```bash
+npm version prerelease --preid=beta   # 1.1.0-beta.0 → 1.1.0-beta.1
+```
+
+**Publishing beta to npm (from `develop`):**
+```bash
+npm publish --tag beta
+```
+
 #### Creating Release Pull Requests
+
 To release changes from `develop` to `main`:
 
 ```bash
@@ -82,6 +110,13 @@ git commit -m "Bump version to vX.X.X for release"
 # 4. Push and create PR
 git push origin develop
 gh pr create --base main --head develop --title "Release vX.X.X"
+```
+
+**Optional: start a beta cycle on `develop`:**
+```bash
+git checkout develop
+npm version preminor --preid=beta  # → X.Y.0-beta.0
+git push origin develop
 ```
 
 ## Architecture Overview
