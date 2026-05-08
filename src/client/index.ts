@@ -3,6 +3,7 @@ import https from 'https';
 import fs from 'fs';
 import { config } from '../config.js';
 import { sessionStore } from '../context.js';
+import { validateCustomRequestMethod, validateCustomRequestPath } from '../utils/validators.js';
 import type {
   RedmineUser,
   RedmineProject,
@@ -281,9 +282,11 @@ export class RedmineClient {
 
   // Custom API Request
   async customRequest(method: string, path: string, data?: unknown, params?: Record<string, unknown>): Promise<unknown> {
+    const safeMethod = validateCustomRequestMethod(method);
+    const safePath = validateCustomRequestPath(path);
     const response = await this.axios.request({
-      method,
-      url: path,
+      method: safeMethod,
+      url: safePath,
       data,
       params,
     });

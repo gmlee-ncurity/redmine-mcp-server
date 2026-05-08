@@ -545,6 +545,28 @@ describe('RedmineClient', () => {
       });
       expect(result).toEqual(mockResponse.data);
     });
+
+    it.each([
+      'https://example.com/issues.json',
+      'http://example.com/issues.json',
+      '//example.com/issues.json',
+      '../issues.json',
+      '/projects/../issues.json',
+      '/issues.json?limit=1',
+      '/issues.json#section',
+    ])('should reject unsafe custom API path %s', async (path) => {
+      await expect(client.customRequest('GET', path)).rejects.toThrow(
+        'Path must be a Redmine API relative path'
+      );
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+    });
+
+    it('should reject unsupported custom API methods', async () => {
+      await expect(client.customRequest('PATCH', '/issues/1.json')).rejects.toThrow(
+        'Method must be one of GET, POST, PUT, DELETE'
+      );
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+    });
   });
 
   describe('error handling', () => {
