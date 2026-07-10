@@ -1,6 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { redmineClient } from '../client/index.js';
 import { formatErrorResponse } from '../utils/errors.js';
+import { customRequestSchema, validateInput } from '../utils/validators.js';
 
 // Import all tools
 import {
@@ -60,6 +61,29 @@ import {
   deleteWikiPage,
 } from './wiki.js';
 
+import {
+  updateJournalTool,
+  updateJournal,
+} from './journals.js';
+
+import {
+  getAttachmentTool,
+  updateAttachmentTool,
+  deleteAttachmentTool,
+  getAttachment,
+  updateAttachment,
+  deleteAttachment,
+} from './attachments.js';
+
+import {
+  listFilesTool,
+  createFileTool,
+  uploadFileTool,
+  listFiles,
+  createFile,
+  uploadFile,
+} from './files.js';
+
 // Add custom API request tool
 export const customRequestTool: Tool = {
   name: 'redmine_custom_request',
@@ -91,14 +115,9 @@ export const customRequestTool: Tool = {
 
 export async function customRequest(input: unknown) {
   try {
-    const { method, path, data, params } = input as {
-      method: string;
-      path: string;
-      data?: unknown;
-      params?: unknown;
-    };
+    const { method, path, data, params } = validateInput(customRequestSchema, input);
     
-    const response = await redmineClient.customRequest(method, path, data, params as Record<string, unknown>);
+    const response = await redmineClient.customRequest(method, path, data, params);
     
     return {
       content: [{
@@ -303,6 +322,19 @@ export const tools: Tool[] = [
   createOrUpdateWikiPageTool,
   deleteWikiPageTool,
 
+  // Journal tools
+  updateJournalTool,
+
+  // Attachment tools
+  getAttachmentTool,
+  updateAttachmentTool,
+  deleteAttachmentTool,
+
+  // File tools
+  listFilesTool,
+  createFileTool,
+  uploadFileTool,
+
   // Custom request tool
   customRequestTool,
 
@@ -316,7 +348,6 @@ export const tools: Tool[] = [
 ];
 
 // Export tool handlers map
-// eslint-disable-next-line no-unused-vars
 export const toolHandlers: Record<string, (_input?: unknown) => Promise<unknown>> = {
   // Issue handlers
   redmine_list_issues: listIssues,
@@ -348,6 +379,19 @@ export const toolHandlers: Record<string, (_input?: unknown) => Promise<unknown>
   redmine_get_wiki_page: getWikiPage,
   redmine_create_or_update_wiki_page: createOrUpdateWikiPage,
   redmine_delete_wiki_page: deleteWikiPage,
+
+  // Journal handlers
+  redmine_update_journal: updateJournal,
+
+  // Attachment handlers
+  redmine_get_attachment: getAttachment,
+  redmine_update_attachment: updateAttachment,
+  redmine_delete_attachment: deleteAttachment,
+
+  // File handlers
+  redmine_list_files: listFiles,
+  redmine_create_file: createFile,
+  redmine_upload_file: uploadFile,
 
   // Custom request handler
   redmine_custom_request: customRequest,

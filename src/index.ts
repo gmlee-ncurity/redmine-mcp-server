@@ -6,6 +6,7 @@ if (Buffer.prototype && !Buffer.prototype.subarray) {
 }
 
 import { runServer } from './server.js';
+import { SERVER_VERSION } from './version.js';
 
 // Enhanced error handling for DXT environment
 const logError = (context: string, error: unknown) => {
@@ -44,13 +45,19 @@ const validateEnvironment = (): boolean => {
     return false;
   }
   
-  // Check authentication
-  const hasApiKey = !!process.env.REDMINE_API_KEY;
-  const hasBasicAuth = !!(process.env.REDMINE_USERNAME && process.env.REDMINE_PASSWORD);
-  
-  if (!hasApiKey && !hasBasicAuth) {
-    console.error(`[${new Date().toISOString()}] [ERROR] Either REDMINE_API_KEY or REDMINE_USERNAME+REDMINE_PASSWORD must be provided`);
-    return false;
+  // Check authentication (only required for stdio mode)
+  const transportType = process.argv.includes('--transport')
+    ? process.argv[process.argv.indexOf('--transport') + 1]
+    : process.env.MCP_TRANSPORT || 'stdio';
+
+  if (transportType !== 'streamable-http') {
+    const hasApiKey = !!process.env.REDMINE_API_KEY;
+    const hasBasicAuth = !!(process.env.REDMINE_USERNAME && process.env.REDMINE_PASSWORD);
+
+    if (!hasApiKey && !hasBasicAuth) {
+      console.error(`[${new Date().toISOString()}] [ERROR] Either REDMINE_API_KEY or REDMINE_USERNAME+REDMINE_PASSWORD must be provided`);
+      return false;
+    }
   }
   
   // Validate URL format
@@ -72,7 +79,7 @@ const validateEnvironment = (): boolean => {
 // Main execution
 const main = async () => {
   const timestamp = new Date().toISOString();
-  console.error(`[${timestamp}] [INFO] Starting Redmine MCP Server v1.0.0`);
+  console.error(`[${timestamp}] [INFO] Starting Redmine MCP Server v${SERVER_VERSION}`);
   console.error(`[${timestamp}] [DEBUG] Process ID: ${process.pid}`);
   
   // Validate environment

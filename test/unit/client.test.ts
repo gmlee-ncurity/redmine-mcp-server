@@ -3,8 +3,27 @@ import axios from 'axios';
 import { RedmineClient } from '../../src/client/index.js';
 import { config } from '../../src/config.js';
 
-// Mock axios
-vi.mock('axios');
+// Mock axios - must provide interceptors in the factory since singleton is created at import time
+vi.mock('axios', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    default: {
+      create: vi.fn(() => ({
+        get: vi.fn(),
+        post: vi.fn(),
+        put: vi.fn(),
+        patch: vi.fn(),
+        delete: vi.fn(),
+        request: vi.fn(),
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+      })),
+    },
+  };
+});
 const mockedAxios = vi.mocked(axios, true);
 
 // Mock config
@@ -33,9 +52,13 @@ describe('RedmineClient', () => {
       get: vi.fn(),
       post: vi.fn(),
       put: vi.fn(),
+      patch: vi.fn(),
       delete: vi.fn(),
       request: vi.fn(),
       interceptors: {
+        request: {
+          use: vi.fn(),
+        },
         response: {
           use: vi.fn(),
         },
@@ -363,6 +386,159 @@ describe('RedmineClient', () => {
       );
       expect(result).toEqual(mockResponse.data);
     });
+
+    it('should encode wiki page path segments', async () => {
+      const mockResponse = {
+        data: {
+          wiki_page: {
+            title: 'A/B Page',
+            text: 'Encoded content',
+            version: 1,
+          },
+        },
+      };
+
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
+
+      const result = await client.getWikiPage('test project', 'A/B Page');
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/projects/test%20project/wiki/A%2FB%20Page.json'
+      );
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe('updateJournal', () => {
+    it('should update a journal', async () => {
+      mockAxiosInstance.put.mockResolvedValue({ data: {} });
+
+      await client.updateJournal(10, { notes: 'Updated note', private_notes: true });
+
+      expect(mockAxiosInstance.put).toHaveBeenCalledWith('/journals/10.json', {
+        journal: { notes: 'Updated note', private_notes: true },
+      });
+    });
+  });
+
+  describe('getAttachment', () => {
+    it('should fetch attachment details', async () => {
+      const mockResponse = {
+        data: {
+          attachment: {
+            id: 1,
+            filename: 'test.txt',
+            filesize: 1024,
+            content_url: 'https://redmine.example.com/attachments/download/1/test.txt',
+            author: { id: 1, name: 'John' },
+            created_on: '2024-01-15',
+          },
+        },
+      };
+
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
+
+      const result = await client.getAttachment(1);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/attachments/1.json');
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe('updateAttachment', () => {
+    it('should update an attachment via PATCH', async () => {
+      mockAxiosInstance.patch.mockResolvedValue({ data: {} });
+
+      await client.updateAttachment(1, { filename: 'renamed.txt', description: 'Updated' });
+
+      expect(mockAxiosInstance.patch).toHaveBeenCalledWith('/attachments/1.json', {
+        attachment: { filename: 'renamed.txt', description: 'Updated' },
+      });
+    });
+  });
+
+  describe('deleteAttachment', () => {
+    it('should delete an attachment', async () => {
+      mockAxiosInstance.delete.mockResolvedValue({ data: {} });
+
+      await client.deleteAttachment(1);
+
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/attachments/1.json');
+    });
+  });
+
+  describe('listFiles', () => {
+    it('should fetch project files', async () => {
+      const mockResponse = {
+        data: {
+          files: [
+            { id: 1, filename: 'doc.pdf', filesize: 2048 },
+          ],
+        },
+      };
+
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
+
+      const result = await client.listFiles('test-project');
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/projects/test-project/files.json');
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe('createFile', () => {
+    it('should create a file in project', async () => {
+      mockAxiosInstance.post.mockResolvedValue({ data: {} });
+
+      await client.createFile('test-project', { token: 'abc123', version_id: 1, filename: 'doc.pdf' });
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/projects/test-project/files.json', {
+        file: { token: 'abc123', version_id: 1, filename: 'doc.pdf' },
+      });
+    });
+  });
+
+  describe('uploadFile', () => {
+    it('should upload file with octet-stream content type', async () => {
+      const mockResponse = {
+        data: {
+          upload: { token: 'upload-token-123' },
+        },
+      };
+
+      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+
+      const content = Buffer.from('file content');
+      const result = await client.uploadFile(content, 'test.txt');
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/uploads.json', content, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="test.txt"',
+        },
+      });
+      expect(result).toEqual(mockResponse.data);
+    });
+
+    it('should upload file without filename', async () => {
+      const mockResponse = {
+        data: {
+          upload: { token: 'upload-token-456' },
+        },
+      };
+
+      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+
+      const content = Buffer.from('file content');
+      const result = await client.uploadFile(content);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/uploads.json', content, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+      });
+      expect(result).toEqual(mockResponse.data);
+    });
   });
 
   describe('customRequest', () => {
@@ -389,6 +565,28 @@ describe('RedmineClient', () => {
         params: { param: 'value' },
       });
       expect(result).toEqual(mockResponse.data);
+    });
+
+    it.each([
+      'https://example.com/issues.json',
+      'http://example.com/issues.json',
+      '//example.com/issues.json',
+      '../issues.json',
+      '/projects/../issues.json',
+      '/issues.json?limit=1',
+      '/issues.json#section',
+    ])('should reject unsafe custom API path %s', async (path) => {
+      await expect(client.customRequest('GET', path)).rejects.toThrow(
+        'Path must be a Redmine API relative path'
+      );
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+    });
+
+    it('should reject unsupported custom API methods', async () => {
+      await expect(client.customRequest('PATCH', '/issues/1.json')).rejects.toThrow(
+        'Method must be one of GET, POST, PUT, DELETE'
+      );
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
     });
   });
 

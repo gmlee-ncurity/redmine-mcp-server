@@ -166,7 +166,7 @@ export const createIssueTool: Tool = {
       },
       description: { 
         type: 'string', 
-        description: 'Issue description' 
+        description: 'Issue description (in Markdown format)' 
       },
       tracker_id: { 
         type: 'number', 
@@ -224,6 +224,20 @@ export const createIssueTool: Tool = {
       custom_field_values: {
         type: 'object',
         description: 'Custom field values as key-value pairs'
+      },
+      uploads: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            token: { type: 'string', description: 'Upload token from redmine_upload_file' },
+            filename: { type: 'string', description: 'Filename' },
+            description: { type: 'string', description: 'File description' },
+            content_type: { type: 'string', description: 'MIME type' }
+          },
+          required: ['token']
+        },
+        description: 'File attachments to add (use redmine_upload_file first to get tokens)'
       }
     },
     required: ['project_id', 'subject']
@@ -253,6 +267,7 @@ export async function createIssue(input: unknown) {
       is_private: issueData.is_private,
       watcher_user_ids: issueData.watcher_user_ids,
       custom_field_values: issueData.custom_field_values,
+      uploads: issueData.uploads,
     };
     
     const response = await redmineClient.createIssue(apiData);
@@ -286,11 +301,11 @@ export const updateIssueTool: Tool = {
       },
       description: { 
         type: 'string', 
-        description: 'Issue description' 
+        description: 'Issue description (in Markdown format)'
       },
-      notes: { 
-        type: 'string', 
-        description: 'Update notes/comment' 
+      notes: {
+        type: 'string',
+        description: 'Update notes/comment (in Markdown format)' 
       },
       private_notes: { 
         type: 'boolean', 
@@ -347,6 +362,20 @@ export const updateIssueTool: Tool = {
       custom_field_values: {
         type: 'object',
         description: 'Custom field values as key-value pairs'
+      },
+      uploads: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            token: { type: 'string', description: 'Upload token from redmine_upload_file' },
+            filename: { type: 'string', description: 'Filename' },
+            description: { type: 'string', description: 'File description' },
+            content_type: { type: 'string', description: 'MIME type' }
+          },
+          required: ['token']
+        },
+        description: 'File attachments to add (use redmine_upload_file first to get tokens)'
       }
     },
     required: ['id']

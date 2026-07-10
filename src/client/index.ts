@@ -1,7 +1,9 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import https from 'https';
 import fs from 'fs';
 import { config } from '../config.js';
+import { sessionStore } from '../context.js';
+import { validateCustomRequestMethod, validateCustomRequestPath } from '../utils/validators.js';
 import type {
   RedmineUser,
   RedmineProject,
@@ -16,6 +18,9 @@ import type {
   Tracker,
   Activity,
   Version,
+  Attachment,
+  RedmineFile,
+  Upload,
 } from './types.js';
 
 export class RedmineClient {
@@ -52,8 +57,29 @@ export class RedmineClient {
 
     this.axios = axios.create(axiosConfig);
 
+    // Add per-session credential override via AsyncLocalStorage
+    this.axios.interceptors.request.use((reqConfig: InternalAxiosRequestConfig) => {
+      const session = sessionStore.getStore();
+      if (session) {
+        if (session.redmineApiKey) {
+          reqConfig.headers['X-Redmine-API-Key'] = session.redmineApiKey;
+        }
+        if (session.redmineUsername && session.redminePassword) {
+          reqConfig.auth = {
+            username: session.redmineUsername,
+            password: session.redminePassword,
+          };
+        }
+      }
+      return reqConfig;
+    });
+
     // Add retry interceptor
     this.setupRetryInterceptor();
+  }
+
+  private pathSegment(value: number | string): string {
+    return encodeURIComponent(String(value));
   }
 
   private setupRetryInterceptor(): void {
@@ -99,7 +125,7 @@ export class RedmineClient {
 
   async getProject(id: number | string, include?: string[]): Promise<{ project: RedmineProject }> {
     const params = include?.length ? { include: include.join(',') } : undefined;
-    const response = await this.axios.get(`/projects/${id}.json`, { params });
+    const response = await this.axios.get(`/projects/${this.pathSegment(id)}.json`, { params });
     return response.data;
   }
 
@@ -111,7 +137,7 @@ export class RedmineClient {
 
   async getIssue(id: number, include?: string[]): Promise<{ issue: RedmineIssue }> {
     const params = include?.length ? { include: include.join(',') } : undefined;
-    const response = await this.axios.get(`/issues/${id}.json`, { params });
+    const response = await this.axios.get(`/issues/${this.pathSegment(id)}.json`, { params });
     return response.data;
   }
 
@@ -121,11 +147,11 @@ export class RedmineClient {
   }
 
   async updateIssue(id: number, issue: Partial<RedmineIssue>): Promise<void> {
-    await this.axios.put(`/issues/${id}.json`, { issue });
+    await this.axios.put(`/issues/${this.pathSegment(id)}.json`, { issue });
   }
 
   async deleteIssue(id: number): Promise<void> {
-    await this.axios.delete(`/issues/${id}.json`);
+    await this.axios.delete(`/issues/${this.pathSegment(id)}.json`);
   }
 
   // Time Entries
@@ -135,7 +161,7 @@ export class RedmineClient {
   }
 
   async getTimeEntry(id: number): Promise<{ time_entry: TimeEntry }> {
-    const response = await this.axios.get(`/time_entries/${id}.json`);
+    const response = await this.axios.get(`/time_entries/${this.pathSegment(id)}.json`);
     return response.data;
   }
 
@@ -145,11 +171,11 @@ export class RedmineClient {
   }
 
   async updateTimeEntry(id: number, timeEntry: Partial<TimeEntry>): Promise<void> {
-    await this.axios.put(`/time_entries/${id}.json`, { time_entry: timeEntry });
+    await this.axios.put(`/time_entries/${this.pathSegment(id)}.json`, { time_entry: timeEntry });
   }
 
   async deleteTimeEntry(id: number): Promise<void> {
-    await this.axios.delete(`/time_entries/${id}.json`);
+    await this.axios.delete(`/time_entries/${this.pathSegment(id)}.json`);
   }
 
   // Users
@@ -165,30 +191,30 @@ export class RedmineClient {
 
   async getUser(id: number, include?: string[]): Promise<{ user: RedmineUser }> {
     const params = include?.length ? { include: include.join(',') } : undefined;
-    const response = await this.axios.get(`/users/${id}.json`, { params });
+    const response = await this.axios.get(`/users/${this.pathSegment(id)}.json`, { params });
     return response.data;
   }
 
   // Wiki Pages
   async listWikiPages(projectId: number | string): Promise<{ wiki_pages: WikiPage[] }> {
-    const response = await this.axios.get(`/projects/${projectId}/wiki/index.json`);
+    const response = await this.axios.get(`/projects/${this.pathSegment(projectId)}/wiki/index.json`);
     return response.data;
   }
 
   async getWikiPage(projectId: number | string, title: string, version?: number): Promise<{ wiki_page: WikiPage }> {
     const url = version 
-      ? `/projects/${projectId}/wiki/${title}/${version}.json`
-      : `/projects/${projectId}/wiki/${title}.json`;
+      ? `/projects/${this.pathSegment(projectId)}/wiki/${this.pathSegment(title)}/${this.pathSegment(version)}.json`
+      : `/projects/${this.pathSegment(projectId)}/wiki/${this.pathSegment(title)}.json`;
     const response = await this.axios.get(url);
     return response.data;
   }
 
   async createOrUpdateWikiPage(projectId: number | string, title: string, wikiPage: Partial<WikiPage>): Promise<void> {
-    await this.axios.put(`/projects/${projectId}/wiki/${title}.json`, { wiki_page: wikiPage });
+    await this.axios.put(`/projects/${this.pathSegment(projectId)}/wiki/${this.pathSegment(title)}.json`, { wiki_page: wikiPage });
   }
 
   async deleteWikiPage(projectId: number | string, title: string): Promise<void> {
-    await this.axios.delete(`/projects/${projectId}/wiki/${title}.json`);
+    await this.axios.delete(`/projects/${this.pathSegment(projectId)}/wiki/${this.pathSegment(title)}.json`);
   }
 
   // Enumerations
@@ -213,15 +239,58 @@ export class RedmineClient {
   }
 
   async listVersions(projectId: number | string): Promise<{ versions: Version[] }> {
-    const response = await this.axios.get(`/projects/${projectId}/versions.json`);
+    const response = await this.axios.get(`/projects/${this.pathSegment(projectId)}/versions.json`);
+    return response.data;
+  }
+
+  // Journals
+  async updateJournal(id: number, data: { notes?: string; private_notes?: boolean }): Promise<void> {
+    await this.axios.put(`/journals/${this.pathSegment(id)}.json`, { journal: data });
+  }
+
+  // Attachments
+  async getAttachment(id: number): Promise<{ attachment: Attachment }> {
+    const response = await this.axios.get(`/attachments/${this.pathSegment(id)}.json`);
+    return response.data;
+  }
+
+  async updateAttachment(id: number, data: { filename?: string; description?: string }): Promise<void> {
+    await this.axios.patch(`/attachments/${this.pathSegment(id)}.json`, { attachment: data });
+  }
+
+  async deleteAttachment(id: number): Promise<void> {
+    await this.axios.delete(`/attachments/${this.pathSegment(id)}.json`);
+  }
+
+  // Files
+  async listFiles(projectId: number | string): Promise<{ files: RedmineFile[] }> {
+    const response = await this.axios.get(`/projects/${this.pathSegment(projectId)}/files.json`);
+    return response.data;
+  }
+
+  async createFile(projectId: number | string, data: { token: string; version_id?: number; filename?: string; description?: string }): Promise<void> {
+    await this.axios.post(`/projects/${this.pathSegment(projectId)}/files.json`, { file: data });
+  }
+
+  // Uploads
+  async uploadFile(content: Buffer, filename?: string): Promise<{ upload: Upload }> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/octet-stream',
+    };
+    if (filename) {
+      headers['Content-Disposition'] = `attachment; filename="${filename}"`;
+    }
+    const response = await this.axios.post('/uploads.json', content, { headers });
     return response.data;
   }
 
   // Custom API Request
   async customRequest(method: string, path: string, data?: unknown, params?: Record<string, unknown>): Promise<unknown> {
+    const safeMethod = validateCustomRequestMethod(method);
+    const safePath = validateCustomRequestPath(path);
     const response = await this.axios.request({
-      method,
-      url: path,
+      method: safeMethod,
+      url: safePath,
       data,
       params,
     });

@@ -6,6 +6,14 @@ export const positiveIntegerSchema = z.number().int().positive();
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)');
 export const emailSchema = z.string().email();
 
+// Upload schema for file attachments
+export const uploadSchema = z.object({
+  token: z.string().min(1),
+  filename: z.string().optional(),
+  description: z.string().optional(),
+  content_type: z.string().optional(),
+});
+
 // Issue validators
 export const createIssueSchema = z.object({
   project_id: positiveIntegerSchema,
@@ -25,6 +33,7 @@ export const createIssueSchema = z.object({
   is_private: z.boolean().optional(),
   watcher_user_ids: z.array(positiveIntegerSchema).optional(),
   custom_field_values: z.record(z.string(), z.string()).optional(),
+  uploads: z.array(uploadSchema).optional(),
 });
 
 export const updateIssueSchema = createIssueSchema.partial().extend({
@@ -95,6 +104,83 @@ export const wikiPageSchema = z.object({
   comments: z.string().optional(),
   version: positiveIntegerSchema.optional(),
   parent_title: z.string().optional(),
+});
+
+// Journal validators
+export const updateJournalSchema = z.object({
+  notes: z.string().optional(),
+  private_notes: z.boolean().optional(),
+});
+
+// Attachment validators
+export const updateAttachmentSchema = z.object({
+  filename: z.string().min(1).optional(),
+  description: z.string().optional(),
+});
+
+// File validators
+export const createFileSchema = z.object({
+  token: z.string().min(1),
+  version_id: positiveIntegerSchema.optional(),
+  filename: z.string().optional(),
+  description: z.string().optional(),
+});
+
+// Upload validators
+export const uploadFileSchema = z.object({
+  content_base64: z.string().min(1),
+  filename: z.string().optional(),
+});
+
+const customRequestMethods = ['GET', 'POST', 'PUT', 'DELETE'] as const;
+export type CustomRequestMethod = typeof customRequestMethods[number];
+
+function isCustomRequestMethod(method: string): method is CustomRequestMethod {
+  return customRequestMethods.includes(method as CustomRequestMethod);
+}
+
+export function isSafeRedmineApiPath(path: string): boolean {
+  if (!path.startsWith('/') || path.startsWith('//')) {
+    return false;
+  }
+
+  if (path.includes('?') || path.includes('#') || path.includes('\\')) {
+    return false;
+  }
+
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(path)) {
+    return false;
+  }
+
+  return !path.split('/').includes('..');
+}
+
+export function validateCustomRequestMethod(method: string): CustomRequestMethod {
+  if (isCustomRequestMethod(method)) {
+    return method;
+  }
+
+  throw new ValidationError('Method must be one of GET, POST, PUT, DELETE', 'method');
+}
+
+export function validateCustomRequestPath(path: string): string {
+  if (isSafeRedmineApiPath(path)) {
+    return path;
+  }
+
+  throw new ValidationError(
+    'Path must be a Redmine API relative path without protocol, query string, hash, or parent directory segments',
+    'path'
+  );
+}
+
+export const customRequestSchema = z.object({
+  method: z.enum(customRequestMethods),
+  path: z.string().min(1).refine(isSafeRedmineApiPath, {
+    message: 'Path must be a Redmine API relative path without protocol, query string, hash, or parent directory segments',
+  }),
+  data: z.record(z.string(), z.unknown()).optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Generic pagination validator
