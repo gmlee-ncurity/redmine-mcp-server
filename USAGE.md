@@ -40,6 +40,10 @@ REDMINE_API_KEY=your-api-key-here
 # MCP_PORT=3000                # HTTP server port (default: 3000)
 # MCP_HOST=127.0.0.1           # HTTP bind host (default: 127.0.0.1)
 
+# Optional: HTTP session lifetime (HTTP transport only)
+# MCP_SESSION_TTL=1800000            # Idle ms before a session is closed (default: 30 min, 0 disables)
+# MCP_SESSION_SWEEP_INTERVAL=60000   # Idle-session sweep interval in ms (default: 60s, 0 disables)
+
 # Optional: OAuth (HTTP transport only)
 # MCP_ISSUER_URL=https://public-url  # OAuth issuer URL (external HTTPS URL for reverse proxy)
 # MCP_DATA_DIR=/data                 # Directory for persistent OAuth data

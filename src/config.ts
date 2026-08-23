@@ -34,6 +34,19 @@ const configSchema = z.object({
     dataDir: z.string().optional(),
     tlsCert: z.string().optional(),
     tlsKey: z.string().optional(),
+    /**
+     * Idle time (ms) after which an HTTP session is closed and evicted.
+     * 0 disables idle session reaping.
+     */
+    sessionTtl: z.number().int().nonnegative('MCP_SESSION_TTL must be >= 0').default(1800000),
+    /**
+     * How often (ms) idle sessions are swept. 0 disables idle session reaping.
+     */
+    sessionSweepInterval: z
+      .number()
+      .int()
+      .nonnegative('MCP_SESSION_SWEEP_INTERVAL must be >= 0')
+      .default(60000),
   }),
   logging: z.object({
     level: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -87,6 +100,12 @@ export function loadConfig(): RedmineConfig {
       dataDir: process.env.MCP_DATA_DIR,
       tlsCert: process.env.MCP_TLS_CERT,
       tlsKey: process.env.MCP_TLS_KEY,
+      sessionTtl: process.env.MCP_SESSION_TTL
+        ? parseInt(process.env.MCP_SESSION_TTL, 10)
+        : 1800000,
+      sessionSweepInterval: process.env.MCP_SESSION_SWEEP_INTERVAL
+        ? parseInt(process.env.MCP_SESSION_SWEEP_INTERVAL, 10)
+        : 60000,
     },
     logging: {
       level: (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || 'info',
