@@ -56,3 +56,6 @@ DXT_SUMMARY.md
 
 # Codex local config
 .codex/
+
+# Claude Code agent worktrees
+.claude/worktrees/
