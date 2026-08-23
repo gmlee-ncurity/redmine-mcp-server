@@ -25,6 +25,10 @@ services:
       # OAuth issuer. 클라이언트가 실제로 접속하는 외부 HTTPS URL과 정확히 일치해야 한다.
       # 이 값이 곧 .well-known 메타데이터의 issuer/authorize/token 엔드포인트가 된다.
       - MCP_ISSUER_URL=https://mcp.ncurity.com
+      # 유휴 세션 회수. 기본값과 동일하지만, 운영 서버에서 9103건이 쌓였던 문제라
+      # 명시해 둔다. 0으로 두면 회수가 꺼지고 예전 누수 동작으로 돌아간다.
+      - MCP_SESSION_TTL=1800000
+      - MCP_SESSION_SWEEP_INTERVAL=60000
       - LOG_LEVEL=info
     volumes:
       # 기존 스택과 볼륨을 절대 공유하지 말 것. src/auth/store.ts 는 oauth-store.json 전체를
