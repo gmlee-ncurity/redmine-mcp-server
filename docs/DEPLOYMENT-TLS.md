@@ -60,35 +60,55 @@ $ curl -s http://192.168.71.103:3000/.well-known/oauth-authorization-server
 
 ## 1. DNS
 
-내부 DNS(또는 split-horizon 존)에 A 레코드를 추가한다.
+**내부 DNS에만** A 레코드를 추가한다. 공인 존은 건드리지 않는다.
 
 ```
 mcp.ncurity.com.  A  192.168.71.103
 ```
 
-`space.ncurity.com`은 공인 IP(211.177.120.91)로 이미 떠 있지만 `mcp.ncurity.com`은
-현재 어디에도 없다. 2번의 DNS-01 인증서 발급은 **공인 존의 TXT 레코드**를 사용하므로,
-A 레코드가 사설 IP를 가리켜도(또는 내부 DNS에만 존재해도) 발급에는 지장이 없다.
+이 구성은 서비스를 외부에 노출시키지 않는다. 192.168.71.103은 사설 대역이라
+외부에서 라우팅 자체가 불가능하고, 이름이 내부 DNS에만 존재하므로 공인 DNS에서는
+조회되지도 않는다.
 
-## 2. 인증서
+## 2. 인증서 — 기존 와일드카드 재사용
 
-사설 IP라 HTTP-01 챌린지는 쓸 수 없다. **DNS-01**로 발급한다.
+새로 발급할 필요가 없다. 사내에 이미 공인 CA 와일드카드 인증서가 있다.
 
-```bash
-certbot certonly --manual --preferred-challenges dns -d mcp.ncurity.com
+```console
+$ openssl s_client -connect space.ncurity.com:443 -servername space.ncurity.com </dev/null \
+    | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+subject=CN = *.ncurity.com
+issuer=C = GB, O = Sectigo Limited, CN = Sectigo Public Server Authentication CA DV R36
+notAfter=Dec  4 23:59:59 2026 GMT
+X509v3 Subject Alternative Name:
+    DNS:*.ncurity.com, DNS:ncurity.com
 ```
 
-출력되는 `_acme-challenge.mcp.ncurity.com` TXT 레코드를 공인 존에 등록한 뒤 진행한다.
+`*.ncurity.com`이 `mcp.ncurity.com`을 그대로 덮는다. 얻는 것:
 
-> `--manual`은 자동 갱신이 안 된다. 90일마다 수작업하지 않으려면 DNS 제공자용
-> certbot 플러그인(`certbot-dns-route53`, `certbot-dns-cloudflare` 등)으로
-> 전환하고 `certbot renew --dry-run`으로 검증할 것. **이 단계를 건너뛰면 90일 뒤
-> 전 사용자가 동시에 인증 실패한다.**
+- **ACME/Let's Encrypt 불필요** — DNS-01 TXT 레코드도, 90일 갱신 자동화도 없다.
+- **클라이언트 설정 0** — Sectigo는 Node 기본 신뢰 저장소에 있는 공인 CA다.
+  사설 CA를 쓸 때 필요한 `NODE_EXTRA_CA_CERTS` 배포가 필요 없다.
+- **CT 로그에 흔적 없음** — 새 인증서를 발급하지 않으므로 `mcp.ncurity.com`이라는
+  이름이 공개 로그에 남지 않는다. 내부 전용 서비스에는 오히려 유리하다.
+- **갱신은 기존 절차 그대로** — 연 1회 갱신 시 이 서버의 파일만 같이 교체하면 된다.
 
-사내 CA가 있다면 그쪽으로 발급해도 된다. 단, 사내 CA는 각 클라이언트에서
-`NODE_EXTRA_CA_CERTS`로 루트 CA를 신뢰시켜야 하므로 배포 부담이 늘어난다.
-Let's Encrypt를 쓰면 클라이언트 설정이 0이다.
+인증서와 키를 nginx가 읽을 위치에 배치한다.
 
+```bash
+install -d -m 700 /etc/nginx/ssl/ncurity-wildcard && install -m 600 fullchain.pem privkey.pem /etc/nginx/ssl/ncurity-wildcard/
+```
+
+> **판단이 필요한 지점:** 와일드카드 개인키를 이 서버에도 두게 되므로, 서버가
+> 털리면 `*.ncurity.com` 전체가 영향권에 들어간다. 내부망 서버 간 와일드카드
+> 공유는 흔한 운영 방식이지만, 이 확산을 허용하지 않는 정책이라면 아래 대안을 쓴다.
+>
+> - **사내 CA로 발급**: 공인 DNS와 완전히 무관해진다. 대신 클라이언트마다
+>   `NODE_EXTRA_CA_CERTS=/path/to/root-ca.pem` 설정이 필요하다.
+> - **Let's Encrypt DNS-01**: `certbot certonly --manual --preferred-challenges dns
+>   -d mcp.ncurity.com`. 공인 존에 TXT 레코드가 필요하고, `--manual`은 자동 갱신이
+>   안 되므로 DNS 제공자 플러그인으로 전환하지 않으면 90일 뒤 전 사용자가 동시에
+>   인증 실패한다.
 ## 3. 신규 스택 기동
 
 기존 디렉터리를 재사용하지 않고 새로 받는다(롤백 경로를 깨끗하게 유지).
@@ -191,17 +211,12 @@ SDK 구현상의 이유:
 
 ### 서브도메인 추가 절차
 
-1. DNS에 `mcp-<name>.ncurity.com A 192.168.71.103` 추가
-2. 인증서에 이름 추가 — SAN으로 묶거나(권장) 와일드카드 발급
-
-```bash
-certbot certonly --manual --preferred-challenges dns -d mcp.ncurity.com -d mcp-foo.ncurity.com
-```
-
+1. 내부 DNS에 `mcp-<name>.ncurity.com A 192.168.71.103` 추가
+2. **인증서 작업 없음** — `*.ncurity.com` 와일드카드가 모든 서브도메인을 덮는다
 3. 새 스택은 루프백의 빈 포트(3002, 3003 …)에 바인딩하고,
    `MCP_ISSUER_URL`을 **자기 서브도메인**으로 설정
-4. `mcp.ncurity.com.conf`를 복사해 `server_name`, `proxy_pass`, 인증서 경로,
-   로그 경로만 바꾼다. 프록시 설정은 `include /etc/nginx/snippets/mcp-proxy.inc;`로 공유된다.
+4. `mcp.ncurity.com.conf`를 복사해 `server_name`, `proxy_pass`, 로그 경로만 바꾼다.
+   인증서 경로와 프록시 설정(`include /etc/nginx/snippets/mcp-proxy.inc;`)은 그대로 공유된다.
 
 ### 예외: OAuth를 쓰지 않는 서버
 
@@ -218,6 +233,8 @@ D+14 이전에는 기존 스택이 그대로 살아 있으므로, 플러그인 `
 ## 남은 작업
 
 - **세션 누수**: `GET/POST /mcp` 세션이 명시적 `DELETE` 없이는 회수되지 않아
-  `transports` 맵에 무한 누적된다(운영 서버 실측 9103건). 별도 브랜치에서 수정 중이며,
-  머지 후 신규 스택을 `up -d --build`로 재빌드할 것.
+  `transports` 맵에 무한 누적된다(운영 서버 실측 9103건). `fix/http-session-leak`
+  브랜치에 수정이 올라가 있고 유휴 세션 회수 옵션(`MCP_SESSION_TTL`,
+  `MCP_SESSION_SWEEP_INTERVAL`)이 추가됐다. **머지 후 신규 스택을 빌드**하면
+  이 문제를 안고 시작하지 않을 수 있다.
 - **포트 3000 차단**: 폐기 완료 후 LAN에서의 평문 접근 경로를 방화벽에서 닫는다.
