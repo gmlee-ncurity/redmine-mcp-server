@@ -354,6 +354,127 @@ describe('HTTP Transport', () => {
     });
   });
 
+  // Sessions now expire, so an unknown session ID is the normal end-of-life path.
+  // Bearer auth is stubbed out here so the session checks are actually reached.
+  describe('unknown session IDs (auth stubbed)', () => {
+    const port = 19881;
+    const host = '127.0.0.1';
+    const url = `http://${host}:${port}/mcp`;
+    const bearerAuthModule = '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
+
+    beforeAll(async () => {
+      vi.resetModules();
+      vi.doMock(bearerAuthModule, () => ({
+        requireBearerAuth: () =>
+          (req: { auth?: unknown }, _res: unknown, next: () => void) => {
+            req.auth = { extra: {} };
+            next();
+          },
+      }));
+
+      const mod = await import('../../../src/transport/http.js');
+      await mod.startHttpTransport(port, host);
+    });
+
+    afterAll(() => {
+      vi.doUnmock(bearerAuthModule);
+      vi.resetModules();
+    });
+
+    it('returns 404 Session not found for POST with an unknown session ID', async () => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'mcp-session-id': 'reaped-session' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 1 }),
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get('content-type')).toContain('application/json');
+      expect(await response.json()).toEqual({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Session not found' },
+        id: null,
+      });
+    });
+
+    it('returns 404 for POST with an unknown session ID even for an initialize request', async () => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'mcp-session-id': 'reaped-session' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'initialize',
+          params: {
+            protocolVersion: '2025-06-18',
+            capabilities: {},
+            clientInfo: { name: 'test', version: '1.0.0' },
+          },
+          id: 1,
+        }),
+      });
+
+      expect(response.status).toBe(404);
+      expect((await response.json()).error.code).toBe(-32001);
+    });
+
+    it('still returns 400 for POST without a session ID that is not an initialize request', async () => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 1 }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Bad Request: No valid session ID provided' },
+        id: null,
+      });
+    });
+
+    it('returns 404 for GET /mcp with an unknown session ID', async () => {
+      const response = await fetch(url, { headers: { 'mcp-session-id': 'reaped-session' } });
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Session not found' },
+        id: null,
+      });
+    });
+
+    it('returns 400 for GET /mcp without a session ID', async () => {
+      const response = await fetch(url);
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Bad Request: Mcp-Session-Id header is required' },
+        id: null,
+      });
+    });
+
+    it('returns 404 for DELETE /mcp with an unknown session ID', async () => {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'mcp-session-id': 'reaped-session' },
+      });
+
+      expect(response.status).toBe(404);
+      expect((await response.json()).error).toEqual({
+        code: -32001,
+        message: 'Session not found',
+      });
+    });
+
+    it('returns 400 for DELETE /mcp without a session ID', async () => {
+      const response = await fetch(url, { method: 'DELETE' });
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.code).toBe(-32000);
+    });
+  });
+
   describe('session TTL configuration', () => {
     it('defaults to a 30 minute TTL swept every 60 seconds', async () => {
       const { config } = await import('../../../src/config.js');

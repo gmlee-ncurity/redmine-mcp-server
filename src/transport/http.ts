@@ -259,6 +259,28 @@ function trackRequest(
   });
 }
 
+/** JSON-RPC error code the SDK uses for a malformed request (missing session ID). */
+const JSONRPC_BAD_REQUEST = -32000;
+/** JSON-RPC error code the SDK uses for an unknown/terminated session. */
+const JSONRPC_SESSION_NOT_FOUND = -32001;
+
+/** Mirrors the SDK's `createJsonErrorResponse` body so clients see a consistent shape. */
+function sendJsonRpcError(res: Response, status: number, code: number, message: string): void {
+  res.status(status).json({ jsonrpc: '2.0', error: { code, message }, id: null });
+}
+
+/**
+ * Reply to a request carrying a session ID the server no longer knows.
+ *
+ * Sessions now expire on idle, so this is the normal end-of-life path rather than
+ * a client bug. The MCP spec (and the SDK's own `validateSession`) requires 404 +
+ * -32001 here: it is the only signal that tells a client to re-initialize instead
+ * of treating the request as malformed.
+ */
+function sendSessionNotFound(res: Response): void {
+  sendJsonRpcError(res, 404, JSONRPC_SESSION_NOT_FOUND, 'Session not found');
+}
+
 export async function startHttpTransport(port: number, host: string): Promise<void> {
   // Load persisted OAuth data on startup
   loadStore();
@@ -330,7 +352,12 @@ export async function startHttpTransport(port: number, host: string): Promise<vo
     try {
       let transport: StreamableHTTPServerTransport;
 
-      if (sessionId && sessions.has(sessionId)) {
+      if (sessionId) {
+        if (!sessions.has(sessionId)) {
+          // Expired (reaped) or bogus session: tell the client to re-initialize.
+          sendSessionNotFound(res);
+          return;
+        }
         transport = sessions.getTransport(sessionId) as StreamableHTTPServerTransport;
         trackRequest(sessions, sessionId, res);
 
@@ -338,7 +365,7 @@ export async function startHttpTransport(port: number, host: string): Promise<vo
           await transport.handleRequest(req, res, req.body);
         });
         return;
-      } else if (!sessionId && isInitializeRequest(req.body)) {
+      } else if (isInitializeRequest(req.body)) {
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (sid) => {
@@ -364,11 +391,8 @@ export async function startHttpTransport(port: number, host: string): Promise<vo
         });
         return;
       } else {
-        res.status(400).json({
-          jsonrpc: '2.0',
-          error: { code: -32000, message: 'Bad Request: No valid session ID provided' },
-          id: null,
-        });
+        // No session ID at all and not an initialize request: genuinely malformed.
+        sendJsonRpcError(res, 400, JSONRPC_BAD_REQUEST, 'Bad Request: No valid session ID provided');
         return;
       }
     } catch (error) {
@@ -386,8 +410,12 @@ export async function startHttpTransport(port: number, host: string): Promise<vo
   // GET /mcp — SSE stream
   app.get('/mcp', bearerAuth, async (req, res) => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    if (!sessionId || !sessions.has(sessionId)) {
-      res.status(400).send('Invalid or missing session ID');
+    if (!sessionId) {
+      sendJsonRpcError(res, 400, JSONRPC_BAD_REQUEST, 'Bad Request: Mcp-Session-Id header is required');
+      return;
+    }
+    if (!sessions.has(sessionId)) {
+      sendSessionNotFound(res);
       return;
     }
     const transport = sessions.getTransport(sessionId) as StreamableHTTPServerTransport;
@@ -403,8 +431,14 @@ export async function startHttpTransport(port: number, host: string): Promise<vo
   // DELETE /mcp — session termination
   app.delete('/mcp', bearerAuth, async (req, res) => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    if (!sessionId || !sessions.has(sessionId)) {
-      res.status(400).send('Invalid or missing session ID');
+    if (!sessionId) {
+      sendJsonRpcError(res, 400, JSONRPC_BAD_REQUEST, 'Bad Request: Mcp-Session-Id header is required');
+      return;
+    }
+    if (!sessions.has(sessionId)) {
+      // Deleting an already-reaped session is not an error the client can fix by
+      // retrying, but 404 is what the spec and the SDK return.
+      sendSessionNotFound(res);
       return;
     }
     const transport = sessions.getTransport(sessionId) as StreamableHTTPServerTransport;
