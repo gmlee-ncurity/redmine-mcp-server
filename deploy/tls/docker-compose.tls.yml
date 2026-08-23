@@ -1,11 +1,14 @@
-# HTTPS(리버스 프록시) 배포용 스택.
+# HTTPS 배포용 스택 (MCP 서버 + nginx TLS 종단).
 #
 # 기존 평문 HTTP 스택(/home/redmine-mcp-server, :3000)과 **병렬로** 뜨는 것을 전제로 한다.
-# - 프로젝트 이름과 볼륨 이름을 명시적으로 고정해서 기존 스택과 절대 겹치지 않게 한다.
-# - 포트는 루프백에만 바인딩한다. 외부 노출은 nginx(443)가 전담한다.
 #
 #   docker compose -f deploy/tls/docker-compose.tls.yml up -d --build
 #
+# 192.168.71.103의 포트 현황을 반영한 구성이다:
+#   3000 = 기존 redmine-mcp, 3001 = teams-mcp, 3002 = device-tracker,
+#   8080 = dockerhub-ui, 443 = devel-dockerhub(레지스트리, 자체 TLS 종단)
+# 443이 이미 점유돼 있어 nginx는 8443을 쓴다. 호스트에 nginx가 설치돼 있지 않으므로
+# 컨테이너로 띄운다. 그 덕에 MCP 컨테이너는 호스트 포트를 아예 publish 하지 않는다.
 name: redmine-mcp-tls
 
 services:
@@ -13,10 +16,9 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile
-    # 127.0.0.1 바인딩: LAN에서 :3001로 직접 평문 접근하는 경로를 원천 차단한다.
-    # 3000이 아닌 3001인 이유는 기존 스택이 3000을 점유 중이기 때문.
-    ports:
-      - "127.0.0.1:3001:3000"
+    # 호스트 포트 없음. nginx가 compose 네트워크로만 접근한다.
+    expose:
+      - "3000"
     environment:
       - REDMINE_URL=https://space.ncurity.com
       - MCP_HOST=0.0.0.0
@@ -24,7 +26,11 @@ services:
       - MCP_DATA_DIR=/data
       # OAuth issuer. 클라이언트가 실제로 접속하는 외부 HTTPS URL과 정확히 일치해야 한다.
       # 이 값이 곧 .well-known 메타데이터의 issuer/authorize/token 엔드포인트가 된다.
-      - MCP_ISSUER_URL=https://mcp.ncurity.com
+      # 포트가 443이 아니므로 issuer에도 포트를 반드시 포함한다.
+      - MCP_ISSUER_URL=https://mcp.ncurity.com:8443
+      # MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL 은 절대 설정하지 않는다.
+      # 기존 스택은 이 플래그로 SDK의 HTTPS 검사를 끈 탓에 실패가 클라이언트로 밀렸다.
+      #
       # 유휴 세션 회수. 기본값과 동일하지만, 운영 서버에서 9103건이 쌓였던 문제라
       # 명시해 둔다. 0으로 두면 회수가 꺼지고 예전 누수 동작으로 돌아간다.
       - MCP_SESSION_TTL=1800000
@@ -36,6 +42,24 @@ services:
       - redmine-mcp-tls-data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./nginx/mcp.ncurity.com.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/snippets/mcp-proxy.inc:/etc/nginx/snippets/mcp-proxy.inc:ro
+      # 호스트에 미리 배치한 *.ncurity.com 와일드카드 인증서 (런북 2번 참조)
+      - /etc/ssl/ncurity-wildcard:/etc/nginx/ssl/ncurity-wildcard:ro
+    depends_on:
+      - redmine-mcp
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
       interval: 30s
       timeout: 3s
       retries: 3
