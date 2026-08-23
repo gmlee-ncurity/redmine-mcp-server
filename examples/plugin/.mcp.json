@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "redmine": {
+      "command": "npx",
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine@1.3.0"],
+      "env": {
+        "REDMINE_URL": "https://space.ncurity.com",
+        "REDMINE_API_KEY": "${user_config.redmine_api_key}"
+      }
+    }
+  }
+}
