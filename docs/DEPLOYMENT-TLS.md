@@ -23,6 +23,15 @@ $ curl -s http://192.168.71.103:3000/.well-known/oauth-authorization-server
 ([src/transport/http.ts](../src/transport/http.ts) 참조). 즉 서버 설정 문제이며,
 클라이언트 측 우회 대상이 아니다.
 
+> **현행 서버는 SDK 가드를 우회한 상태다.**
+> `@modelcontextprotocol/sdk`의 `mcpAuthRouter`는 https가 아닌 issuer에 대해
+> `Issuer URL must be HTTPS`를 던진다(루프백만 예외). 이 검사는 lockfile에
+> 고정된 1.29.0을 포함해 오래전부터 있었고, 유일한 예외는 환경변수
+> `MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL=true`다. 현행 서버가 http issuer로
+> 정상 기동 중이라는 것은 이 플래그가 켜져 있다는 뜻이다. 서버 측 가드를 끈 결과
+> 실패 지점이 클라이언트로 밀린 것뿐이다.
+> **신규 스택에는 절대 설정하지 말 것.**
+
 목표 구성:
 
 ```
@@ -101,12 +110,13 @@ curl -s http://127.0.0.1:3001/health
 ## 4. nginx
 
 ```bash
-cp /home/redmine-mcp-tls/deploy/tls/nginx/mcp.ncurity.com.conf /etc/nginx/conf.d/ && nginx -t && systemctl reload nginx
+mkdir -p /etc/nginx/snippets && cp /home/redmine-mcp-tls/deploy/tls/nginx/snippets/mcp-proxy.inc /etc/nginx/snippets/ && cp /home/redmine-mcp-tls/deploy/tls/nginx/mcp.ncurity.com.conf /etc/nginx/conf.d/ && nginx -t && systemctl reload nginx
 ```
 
-`deploy/tls/nginx/mcp.ncurity.com.conf`의 SSE 관련 4줄(`proxy_buffering off`,
-`proxy_cache off`, `Connection ''`, `chunked_transfer_encoding off`)은 필수다.
-빠지면 `GET /mcp` 스트림이 nginx 버퍼에 갇혀 세션이 바로 죽는다.
+공통 프록시 설정은 `snippets/mcp-proxy.inc`로 분리돼 있다(MCP 서버를 추가할 때
+재사용). 그 안의 SSE 관련 4줄(`proxy_buffering off`, `proxy_cache off`,
+`Connection ''`, `chunked_transfer_encoding off`)은 필수다. 빠지면 `GET /mcp`
+스트림이 nginx 버퍼에 갇혀 세션이 바로 죽는다.
 
 ## 5. 검증
 
@@ -161,6 +171,43 @@ cd /home/redmine-mcp-server && docker compose stop
 ```bash
 cd /home/redmine-mcp-server && docker compose down -v
 ```
+
+## 8. 여러 MCP 서버 얹기
+
+**서버 하나당 호스트네임 하나**가 원칙이다. 한 호스트네임에 경로로 여러 MCP 서버를
+붙이는 구성(`/redmine/mcp`, `/foo/mcp`)은 OAuth를 쓰는 서버끼리는 동작하지 않는다.
+
+SDK 구현상의 이유:
+
+- `mcpAuthRouter`는 문서화된 대로 **애플리케이션 루트에 마운트해야** 한다.
+- 메타데이터의 엔드포인트가 `new URL('/authorize', baseUrl ?? issuer)` 식으로
+  만들어진다. 선행 슬래시 때문에 issuer에 경로 접두어를 넣어도(`https://host/redmine`)
+  결과는 언제나 `https://host/authorize`로 루트에 붙는다.
+- `/.well-known/oauth-authorization-server`도 경로 인식 없이 루트에만 서빙된다.
+  (`/.well-known/oauth-protected-resource`만 RFC 9728식 경로 인식을 지원한다.)
+
+즉 두 번째 MCP 서버를 같은 호스트네임에 얹으면 `/authorize`, `/token`, `/register`,
+`/revoke`, `/.well-known/oauth-authorization-server`가 전부 충돌한다.
+
+### 서브도메인 추가 절차
+
+1. DNS에 `mcp-<name>.ncurity.com A 192.168.71.103` 추가
+2. 인증서에 이름 추가 — SAN으로 묶거나(권장) 와일드카드 발급
+
+```bash
+certbot certonly --manual --preferred-challenges dns -d mcp.ncurity.com -d mcp-foo.ncurity.com
+```
+
+3. 새 스택은 루프백의 빈 포트(3002, 3003 …)에 바인딩하고,
+   `MCP_ISSUER_URL`을 **자기 서브도메인**으로 설정
+4. `mcp.ncurity.com.conf`를 복사해 `server_name`, `proxy_pass`, 인증서 경로,
+   로그 경로만 바꾼다. 프록시 설정은 `include /etc/nginx/snippets/mcp-proxy.inc;`로 공유된다.
+
+### 예외: OAuth를 쓰지 않는 서버
+
+인증이 없거나 정적 토큰만 쓰는 MCP 서버는 well-known 디스커버리를 타지 않으므로
+경로 기반으로 얹어도 된다. `location /foo/ { proxy_pass ...; }` 한 줄이면 끝이다.
+이 저장소의 서버처럼 자체 OAuth AS 역할을 하는 경우에만 서브도메인이 강제된다.
 
 ## 롤백
 
