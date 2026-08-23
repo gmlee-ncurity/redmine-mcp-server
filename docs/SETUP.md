@@ -61,17 +61,17 @@ For production use, create a dedicated user with limited permissions:
 
 ```bash
 # Global installation
-npm install -g @flor3z-github/mcp-server-redmine
+npm install -g @gmlee-ncurity/mcp-server-redmine
 
 # Or use directly with npx (no installation needed)
-npx @flor3z-github/mcp-server-redmine
+npx @gmlee-ncurity/mcp-server-redmine
 ```
 
 ### Method 2: Local Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/flor3z-github/redmine-mcp-server.git
+git clone https://github.com/gmlee-ncurity/redmine-mcp-server.git
 cd redmine-mcp-server
 
 # Install dependencies
@@ -116,7 +116,7 @@ Location of config file:
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -156,7 +156,7 @@ Location of config file:
   "cline.mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -178,7 +178,7 @@ Location of config file:
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -447,7 +447,7 @@ Configure multiple servers with different names:
   "mcpServers": {
     "redmine-prod": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://prod.redmine.com",
         "REDMINE_API_KEY": "prod-key"
@@ -455,7 +455,7 @@ Configure multiple servers with different names:
     },
     "redmine-dev": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://dev.redmine.com",
         "REDMINE_API_KEY": "dev-key"
@@ -516,7 +516,7 @@ volumes:
 1. **Documentation**
    - [API Documentation](./API.md)
    - [Contributing Guide](./CONTRIBUTING.md)
-   - [GitHub Issues](https://github.com/flor3z-github/redmine-mcp-server/issues)
+   - [GitHub Issues](https://github.com/gmlee-ncurity/redmine-mcp-server/issues)
 
 2. **Community**
    - Discord Server: [Join here]

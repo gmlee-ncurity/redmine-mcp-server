@@ -1,9 +1,9 @@
 # Redmine MCP Server
 
-[![npm version](https://img.shields.io/npm/v/@flor3z-github/mcp-server-redmine.svg)](https://www.npmjs.com/package/@flor3z-github/mcp-server-redmine)
+[![npm version](https://img.shields.io/npm/v/@gmlee-ncurity/mcp-server-redmine.svg)](https://www.npmjs.com/package/@gmlee-ncurity/mcp-server-redmine)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
-[![CI](https://github.com/flor3z-github/redmine-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/flor3z-github/redmine-mcp-server/actions/workflows/ci.yml)
+[![CI](https://github.com/gmlee-ncurity/redmine-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/gmlee-ncurity/redmine-mcp-server/actions/workflows/ci.yml)
 
 [English](README.md) | [사용 가이드](USAGE.md) | [기여 가이드](CONTRIBUTING.md)
 
@@ -18,7 +18,7 @@ Redmine용 Model Context Protocol (MCP) 서버입니다. AI 어시스턴트가 �
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine.com",
         "REDMINE_API_KEY": "your-api-key"
@@ -71,10 +71,10 @@ claude mcp add --transport http redmine http://localhost:3000/mcp
 
 ```bash
 # 설치 없이 바로 사용
-npx @flor3z-github/mcp-server-redmine
+npx @gmlee-ncurity/mcp-server-redmine
 
 # 전역 설치
-npm install -g @flor3z-github/mcp-server-redmine
+npm install -g @gmlee-ncurity/mcp-server-redmine
 ```
 
 ## 라이선스

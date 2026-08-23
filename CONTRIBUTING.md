@@ -5,7 +5,7 @@ Contributions are welcome! Please read through this guide before submitting pull
 ## Development Setup
 
 ```bash
-git clone https://github.com/flor3z-github/redmine-mcp-server.git
+git clone https://github.com/gmlee-ncurity/redmine-mcp-server.git
 cd redmine-mcp-server
 npm install
 npm run build

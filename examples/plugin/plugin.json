@@ -1,0 +1,14 @@
+{
+  "name": "ncurion-redmine",
+  "description": "Redmine MCP server, configured per user",
+  "version": "1.0.0",
+  "userConfig": {
+    "redmine_api_key": {
+      "type": "string",
+      "title": "Redmine API 키",
+      "description": "space.ncurity.com > 내 계정 > API 액세스 키에서 발급받은 키",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

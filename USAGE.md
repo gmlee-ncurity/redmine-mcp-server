@@ -40,6 +40,10 @@ REDMINE_API_KEY=your-api-key-here
 # MCP_PORT=3000                # HTTP server port (default: 3000)
 # MCP_HOST=127.0.0.1           # HTTP bind host (default: 127.0.0.1)
 
+# Optional: HTTP session lifetime (HTTP transport only)
+# MCP_SESSION_TTL=1800000            # Idle ms before a session is closed (default: 30 min, 0 disables)
+# MCP_SESSION_SWEEP_INTERVAL=60000   # Idle-session sweep interval in ms (default: 60s, 0 disables)
+
 # Optional: OAuth (HTTP transport only)
 # MCP_ISSUER_URL=https://public-url  # OAuth issuer URL (external HTTPS URL for reverse proxy)
 # MCP_DATA_DIR=/data                 # Directory for persistent OAuth data
@@ -58,7 +62,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine-instance.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -158,6 +162,11 @@ environment:
   - MCP_ISSUER_URL=https://mcp.your-domain.com
 ```
 
+This is not optional for remote deployments: MCP clients refuse to exchange OAuth
+tokens over a plaintext `token_endpoint` unless it is a loopback address. If the
+issuer is advertised as `http://<lan-ip>:3000`, browser authorization succeeds and
+the token exchange then fails.
+
 ### Docker Deployment
 
 ```yaml
@@ -225,7 +234,7 @@ curl http://localhost:3000/health
   "cline.mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine-instance.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -249,7 +258,7 @@ Add to your Zed settings (`~/.config/zed/settings.json`):
     "redmine": {
       "command": {
         "path": "npx",
-        "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+        "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
         "env": {
           "REDMINE_URL": "https://your-redmine-instance.com",
           "REDMINE_API_KEY": "your-api-key-here"
