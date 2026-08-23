@@ -167,10 +167,6 @@ tokens over a plaintext `token_endpoint` unless it is a loopback address. If the
 issuer is advertised as `http://<lan-ip>:3000`, browser authorization succeeds and
 the token exchange then fails.
 
-Ready-to-use compose and nginx configs live in [`deploy/tls/`](deploy/tls/), with a
-step-by-step runbook (certificate issuance, verification, and migrating off an
-existing plaintext deployment) in [docs/DEPLOYMENT-TLS.md](docs/DEPLOYMENT-TLS.md).
-
 ### Docker Deployment
 
 ```yaml
