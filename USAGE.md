@@ -62,7 +62,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine-instance.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -234,7 +234,7 @@ curl http://localhost:3000/health
   "cline.mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine-instance.com",
         "REDMINE_API_KEY": "your-api-key-here"
@@ -258,7 +258,7 @@ Add to your Zed settings (`~/.config/zed/settings.json`):
     "redmine": {
       "command": {
         "path": "npx",
-        "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+        "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
         "env": {
           "REDMINE_URL": "https://your-redmine-instance.com",
           "REDMINE_API_KEY": "your-api-key-here"

@@ -1,9 +1,9 @@
 # Redmine MCP Server
 
-[![npm version](https://img.shields.io/npm/v/@flor3z-github/mcp-server-redmine.svg)](https://www.npmjs.com/package/@flor3z-github/mcp-server-redmine)
+[![npm version](https://img.shields.io/npm/v/@gmlee-ncurity/mcp-server-redmine.svg)](https://www.npmjs.com/package/@gmlee-ncurity/mcp-server-redmine)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
-[![CI](https://github.com/flor3z-github/redmine-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/flor3z-github/redmine-mcp-server/actions/workflows/ci.yml)
+[![CI](https://github.com/gmlee-ncurity/redmine-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/gmlee-ncurity/redmine-mcp-server/actions/workflows/ci.yml)
 
 [한국어](README-ko.md) | [Usage Guide](USAGE.md) | [Contributing](CONTRIBUTING.md)
 
@@ -18,7 +18,7 @@ A Model Context Protocol (MCP) server for Redmine. Enables AI assistants to mana
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine"],
       "env": {
         "REDMINE_URL": "https://your-redmine.com",
         "REDMINE_API_KEY": "your-api-key"
@@ -79,10 +79,10 @@ For details and new pagination parameters, see [docs/API.md](docs/API.md#redmine
 
 ```bash
 # Direct usage (no install)
-npx @flor3z-github/mcp-server-redmine
+npx @gmlee-ncurity/mcp-server-redmine
 
 # Global install
-npm install -g @flor3z-github/mcp-server-redmine
+npm install -g @gmlee-ncurity/mcp-server-redmine
 ```
 
 ## License

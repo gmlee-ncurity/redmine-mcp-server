@@ -50,8 +50,9 @@ HTTP   →  192.168.71.103:8443      →  인증서 · DNS · nginx · OAuth · 
 각 사용자 PC에서 MCP 서버를 직접 실행하고, 자기 Redmine API 키로 인증한다.
 서버를 운영하지 않는다.
 
-패키지는 npm에 이미 배포돼 있다 (`@flor3z-github/mcp-server-redmine@1.3.0`,
-dist-tag `latest`).
+패키지는 npm의 `@gmlee-ncurity/mcp-server-redmine`이다. 다만 **현재 레지스트리에
+올라가 있는 최신은 1.0.2**이고(beta 태그는 1.0.8-beta.0), 소스의 1.3.0은 아직
+배포 전이다. 아래 예시처럼 버전을 핀으로 박으려면 **1.3.0을 먼저 배포해야 한다.**
 
 ### 플러그인으로 배포하는 법
 
@@ -62,7 +63,7 @@ dist-tag `latest`).
   "mcpServers": {
     "redmine": {
       "command": "npx",
-      "args": ["-y", "@flor3z-github/mcp-server-redmine@1.3.0"],
+      "args": ["-y", "@gmlee-ncurity/mcp-server-redmine@1.3.0"],
       "env": {
         "REDMINE_URL": "https://space.ncurity.com",
         "REDMINE_API_KEY": "${user_config.redmine_api_key}"
@@ -272,7 +273,7 @@ HTTP가 필요한 이유가 있다면 — 중앙 감사, 접근 차단, 또는 �
 |---|---|
 | 현행 서버는 SDK의 HTTPS 가드를 끈 상태 | 기존 `docker-compose.yml`에 `MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL=true` |
 | `NODE_EXTRA_CA_CERTS`는 런타임 설정이 무시됨 | `process.env` 할당 후 fetch → `DEPTH_ZERO_SELF_SIGNED_CERT` |
-| 패키지가 npm에 배포돼 있음 | `@flor3z-github/mcp-server-redmine` 1.3.0, dist-tag `latest` |
+| 패키지가 npm에 존재함 | `@gmlee-ncurity/mcp-server-redmine` · latest 1.0.2 · beta 1.0.8-beta.0 · 소스는 1.3.0 (미배포) |
 | 플러그인이 설치 시점에 민감 값을 받을 수 있음 | `userConfig` + `sensitive: true` → 키체인 저장, `${user_config.KEY}`로 참조 |
 | 플러그인에 설치 시점 훅은 없음 | postinstall 없음. `SessionStart`가 유일한 대체재 |
 | 443을 쓸 수 없음 | `devel-dockerhub`(443→5000)가 `devel.ncurion.com` 자체 인증서로 직접 종단 |
