@@ -50,6 +50,7 @@ claude mcp add --transport http redmine http://localhost:3000/mcp
 - **파일 & 첨부** — 파일 업로드, 목록 조회, 첨부 관리
 - **저널** — 노트 수정
 - **유틸리티** — 상태, 우선순위, 트래커, 커스텀 API 요청, 검색
+- **이슈 링크** — 서버 instructions 로 이슈 링크를 `REDMINE_URL` 기준(`<REDMINE_URL>/issues/<id>`)으로 만들도록 안내해, 어시스턴트가 호스트를 추측하지 않는다
 
 ## 사용 가능한 도구
 

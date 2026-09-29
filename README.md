@@ -48,6 +48,7 @@ See [USAGE.md](USAGE.md) for detailed configuration, Docker deployment, and reve
 - **Files & Attachments** — Upload, list, manage files and attachments
 - **Journals** — Update notes
 - **Utilities** — Statuses, priorities, trackers, custom API requests, search
+- **Issue links** — Server instructions tell the assistant to build issue links from `REDMINE_URL` (`<REDMINE_URL>/issues/<id>`), so it does not guess the host
 
 ## Available Tools
 

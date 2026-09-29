@@ -6,6 +6,7 @@ import {
   ListPromptsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { config } from './config.js';
+import { buildInstructions } from './instructions.js';
 import { tools, toolHandlers } from './tools/index.js';
 import { startStdioTransport, startHttpTransport } from './transport/index.js';
 import { SERVER_VERSION } from './version.js';
@@ -24,6 +25,7 @@ export async function createRedmineServer(): Promise<Server> {
         resources: {},
         prompts: {},
       },
+      instructions: buildInstructions(config.redmine.url),
     }
   );
 
