@@ -274,13 +274,10 @@ export class RedmineClient {
 
   // Uploads
   async uploadFile(content: Buffer, filename?: string): Promise<{ upload: Upload }> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/octet-stream',
-    };
-    if (filename) {
-      headers['Content-Disposition'] = `attachment; filename="${filename}"`;
-    }
-    const response = await this.axios.post('/uploads.json', content, { headers });
+    const response = await this.axios.post('/uploads.json', content, {
+      headers: { 'Content-Type': 'application/octet-stream' },
+      params: filename ? { filename } : undefined,
+    });
     return response.data;
   }
 

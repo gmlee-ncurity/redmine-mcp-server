@@ -512,10 +512,8 @@ describe('RedmineClient', () => {
       const result = await client.uploadFile(content, 'test.txt');
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/uploads.json', content, {
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'Content-Disposition': 'attachment; filename="test.txt"',
-        },
+        headers: { 'Content-Type': 'application/octet-stream' },
+        params: { filename: 'test.txt' },
       });
       expect(result).toEqual(mockResponse.data);
     });
@@ -533,9 +531,8 @@ describe('RedmineClient', () => {
       const result = await client.uploadFile(content);
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/uploads.json', content, {
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
+        headers: { 'Content-Type': 'application/octet-stream' },
+        params: undefined,
       });
       expect(result).toEqual(mockResponse.data);
     });
