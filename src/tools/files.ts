@@ -36,6 +36,11 @@ export async function resolveUploadPath(input: string): Promise<string> {
   if (real.split(path.sep).some((segment) => segment.startsWith('.'))) {
     throw new ValidationError('file_path must not point to a hidden file or directory', 'file_path');
   }
+  // Reading anything else may never finish: /dev/zero grows until memory runs out and a
+  // FIFO blocks the process so hard that it cannot exit.
+  if (!(await fs.promises.stat(real)).isFile()) {
+    throw new ValidationError('file_path must be a regular file', 'file_path');
+  }
   return real;
 }
 
@@ -152,7 +157,7 @@ export const uploadFileTool: Tool = {
       file_path: {
         type: 'string',
         description:
-          'Absolute path to a local file to upload. Preferred for anything but tiny files: the server reads the bytes from disk, so they never pass through the conversation. Only available on the stdio transport, where the server runs on the same machine as the file. Hidden files and directories are refused. A leading "~/" is expanded to the home directory.',
+          'Absolute path to a local file to upload. Preferred for anything but tiny files: the server reads the bytes from disk, so they never pass through the conversation. Only available on the stdio transport, where the server runs on the same machine as the file. It must be a regular file; hidden files and directories are refused. A leading "~/" is expanded to the home directory.',
       },
       content_base64: {
         type: 'string',

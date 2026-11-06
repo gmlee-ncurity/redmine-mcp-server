@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -1304,6 +1305,54 @@ describe('File Tools', () => {
 
         expect(result.isError).toBeUndefined();
         expect(redmineClient.uploadFile).toHaveBeenCalledWith(Buffer.from('plain'), 'link.md');
+      });
+    });
+
+    describe('non-regular files', () => {
+      // Stubbed because really reading these never returns, which would hang the
+      // test run whenever the guard is missing.
+      let read: ReturnType<typeof vi.spyOn>;
+      let dir: string;
+
+      beforeEach(async () => {
+        read = vi.spyOn(fs.promises, 'readFile').mockResolvedValue(Buffer.from('x'));
+        dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-upload-'));
+      });
+
+      afterEach(async () => {
+        read.mockRestore();
+        await fs.promises.rm(dir, { recursive: true, force: true });
+      });
+
+      const expectRefused = async (filePath: string) => {
+        const result = await uploadFile({ file_path: filePath });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('regular file');
+        expect(read).not.toHaveBeenCalled();
+        expect(redmineClient.uploadFile).not.toHaveBeenCalled();
+      };
+
+      it.each(['/dev/zero', '/dev/null', '/dev/random'])('should refuse %s', async (device) => {
+        await expectRefused(device);
+      });
+
+      it('should refuse a FIFO', async () => {
+        const fifo = path.join(dir, 'pipe');
+        execFileSync('mkfifo', [fifo]);
+
+        await expectRefused(fifo);
+      });
+
+      it('should refuse a directory', async () => {
+        await expectRefused(dir);
+      });
+
+      it('should refuse a symlink to a device', async () => {
+        const link = path.join(dir, 'report.pdf');
+        await fs.promises.symlink('/dev/zero', link);
+
+        await expectRefused(link);
       });
     });
 
