@@ -68,9 +68,11 @@ import {
 
 import {
   getAttachmentTool,
+  downloadAttachmentTool,
   updateAttachmentTool,
   deleteAttachmentTool,
   getAttachment,
+  downloadAttachment,
   updateAttachment,
   deleteAttachment,
 } from './attachments.js';
@@ -327,6 +329,7 @@ export const tools: Tool[] = [
 
   // Attachment tools
   getAttachmentTool,
+  downloadAttachmentTool,
   updateAttachmentTool,
   deleteAttachmentTool,
 
@@ -385,6 +388,7 @@ export const toolHandlers: Record<string, (_input?: unknown) => Promise<unknown>
 
   // Attachment handlers
   redmine_get_attachment: getAttachment,
+  redmine_download_attachment: downloadAttachment,
   redmine_update_attachment: updateAttachment,
   redmine_delete_attachment: deleteAttachment,
 

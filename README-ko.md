@@ -62,7 +62,7 @@ claude mcp add --transport http redmine http://localhost:3000/mcp
 | 시간 기록 | `list_time_entries`, `get_time_entry`, `create_time_entry`, `update_time_entry`, `delete_time_entry`, `list_time_entry_activities` |
 | 위키 | `list_wiki_pages`, `get_wiki_page`, `create_or_update_wiki_page`, `delete_wiki_page` |
 | 저널 | `update_journal` |
-| 첨부 | `get_attachment`, `update_attachment`, `delete_attachment` |
+| 첨부 | `get_attachment`, `download_attachment`, `update_attachment`, `delete_attachment` |
 | 파일 | `list_files`, `create_file`, `upload_file` |
 | 유틸리티 | `list_statuses`, `list_priorities`, `list_trackers`, `custom_request`, `search` |
 

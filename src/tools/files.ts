@@ -8,6 +8,20 @@ import { formatFile, formatList } from '../utils/formatters.js';
 import { formatErrorResponse, ValidationError } from '../utils/errors.js';
 import { validateInput, createFileSchema, uploadFileSchema } from '../utils/validators.js';
 
+// Reading or writing a server-side path is only safe on stdio, where the server runs
+// as the user. On streamable-http it would give callers file access on the host.
+export function resolveLocalPath(input: string, field: string): string {
+  if (config.transport.type !== 'stdio') {
+    throw new ValidationError(`${field} is only available on the stdio transport`, field);
+  }
+  const resolved = input.startsWith('~/') ? path.join(os.homedir(), input.slice(2)) : input;
+  // A relative path would resolve against the server process's cwd, not the caller's.
+  if (!path.isAbsolute(resolved)) {
+    throw new ValidationError(`${field} must be an absolute path`, field);
+  }
+  return resolved;
+}
+
 // List files tool
 export const listFilesTool: Tool = {
   name: 'redmine_list_files',
@@ -135,22 +149,7 @@ export async function uploadFile(input: unknown) {
     if (validatedData.content_base64) {
       content = Buffer.from(validatedData.content_base64, 'base64');
     } else if (validatedData.file_path) {
-      // Reading a server-side path is only safe on stdio, where the server runs
-      // as the user. On streamable-http it would be arbitrary file read on the host.
-      if (config.transport.type !== 'stdio') {
-        throw new ValidationError(
-          'file_path is only available on the stdio transport; use content_base64 instead',
-          'file_path'
-        );
-      }
-      const filePath = validatedData.file_path.startsWith('~/')
-        ? path.join(os.homedir(), validatedData.file_path.slice(2))
-        : validatedData.file_path;
-      // A relative path would resolve against the server process's cwd, which is
-      // not the caller's. Refuse it instead of reading a surprising file.
-      if (!path.isAbsolute(filePath)) {
-        throw new ValidationError('file_path must be an absolute path', 'file_path');
-      }
+      const filePath = resolveLocalPath(validatedData.file_path, 'file_path');
       content = await fs.promises.readFile(filePath);
       filename = filename || path.basename(filePath);
     } else {

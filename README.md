@@ -60,7 +60,7 @@ See [USAGE.md](USAGE.md) for detailed configuration, Docker deployment, and reve
 | Time Entries | `list_time_entries`, `get_time_entry`, `create_time_entry`, `update_time_entry`, `delete_time_entry`, `list_time_entry_activities` |
 | Wiki | `list_wiki_pages`, `get_wiki_page`, `create_or_update_wiki_page`, `delete_wiki_page` |
 | Journals | `update_journal` |
-| Attachments | `get_attachment`, `update_attachment`, `delete_attachment` |
+| Attachments | `get_attachment`, `download_attachment`, `update_attachment`, `delete_attachment` |
 | Files | `list_files`, `create_file`, `upload_file` |
 | Utilities | `list_statuses`, `list_priorities`, `list_trackers`, `custom_request`, `search` |
 

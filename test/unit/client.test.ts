@@ -457,6 +457,21 @@ describe('RedmineClient', () => {
     });
   });
 
+  describe('downloadAttachment', () => {
+    it('should fetch raw bytes through the configured Redmine host', async () => {
+      const raw = Uint8Array.from([0, 255, 128, 10]);
+      mockAxiosInstance.get.mockResolvedValue({ data: raw.buffer });
+
+      const result = await client.downloadAttachment(7, '설계 문서.png');
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        `/attachments/download/7/${encodeURIComponent('설계 문서.png')}`,
+        { responseType: 'arraybuffer' }
+      );
+      expect(result.equals(Buffer.from(raw))).toBe(true);
+    });
+  });
+
   describe('deleteAttachment', () => {
     it('should delete an attachment', async () => {
       mockAxiosInstance.delete.mockResolvedValue({ data: {} });

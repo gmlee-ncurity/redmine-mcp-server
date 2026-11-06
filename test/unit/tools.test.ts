@@ -35,13 +35,14 @@ import {
   getAttachment,
   updateAttachment,
   deleteAttachment,
+  downloadAttachment,
 } from '../../src/tools/attachments.js';
 import {
   listFiles,
   createFile,
   uploadFile,
 } from '../../src/tools/files.js';
-import { customRequest } from '../../src/tools/index.js';
+import { customRequest, tools, toolHandlers } from '../../src/tools/index.js';
 import { redmineClient } from '../../src/client/index.js';
 
 // Mock the client
@@ -76,6 +77,7 @@ vi.mock('../../src/client/index.js', () => ({
     getAttachment: vi.fn(),
     updateAttachment: vi.fn(),
     deleteAttachment: vi.fn(),
+    downloadAttachment: vi.fn(),
     listFiles: vi.fn(),
     createFile: vi.fn(),
     uploadFile: vi.fn(),
@@ -874,6 +876,138 @@ describe('Attachment Tools', () => {
       const result = await getAttachment({ id: 999 });
 
       expect(result.isError).toBe(true);
+    });
+  });
+
+  describe('downloadAttachment', () => {
+    const bytes = Buffer.from(Array.from({ length: 512 }, (_, i) => i % 256));
+    const metadata = (filesize: number) => ({
+      attachment: {
+        id: 7,
+        filename: 'shot.png',
+        filesize,
+        content_type: 'image/png',
+        content_url: 'https://elsewhere.example/attachments/download/7/shot.png',
+        author: { id: 1, name: 'a' },
+        created_on: '2026-01-01T00:00:00Z',
+      },
+    });
+    let dir: string;
+
+    beforeEach(async () => {
+      dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-download-'));
+      vi.mocked(redmineClient.getAttachment).mockResolvedValue(metadata(bytes.length));
+      vi.mocked(redmineClient.downloadAttachment).mockResolvedValue(bytes);
+    });
+
+    afterEach(async () => {
+      await fs.promises.rm(dir, { recursive: true, force: true });
+    });
+
+    it('should be registered as a tool with a handler', () => {
+      expect(tools.map((t) => t.name)).toContain('redmine_download_attachment');
+      expect(toolHandlers.redmine_download_attachment).toBe(downloadAttachment);
+    });
+
+    it('should save the exact bytes to save_path', async () => {
+      const savePath = path.join(dir, 'out.png');
+
+      const result = await downloadAttachment({ id: 7, save_path: savePath });
+
+      expect(result.isError).toBeUndefined();
+      expect(redmineClient.downloadAttachment).toHaveBeenCalledWith(7, 'shot.png');
+      expect((await fs.promises.readFile(savePath)).equals(bytes)).toBe(true);
+      expect(result.content[0].text).toContain(savePath);
+      expect(result.content[0].text).toContain('512 bytes');
+    });
+
+    it('should create the file readable only by its owner', async () => {
+      const savePath = path.join(dir, 'out.png');
+
+      await downloadAttachment({ id: 7, save_path: savePath });
+
+      expect((await fs.promises.stat(savePath)).mode & 0o777).toBe(0o600);
+    });
+
+    it('should refuse to overwrite an existing file', async () => {
+      const savePath = path.join(dir, 'out.png');
+      await fs.promises.writeFile(savePath, 'keep me');
+
+      const result = await downloadAttachment({ id: 7, save_path: savePath });
+
+      expect(result.isError).toBe(true);
+      expect(await fs.promises.readFile(savePath, 'utf8')).toBe('keep me');
+    });
+
+    it('should refuse to write through a symlink', async () => {
+      const target = path.join(dir, 'target');
+      const link = path.join(dir, 'link');
+      await fs.promises.writeFile(target, 'keep me');
+      await fs.promises.symlink(target, link);
+
+      const result = await downloadAttachment({ id: 7, save_path: link });
+
+      expect(result.isError).toBe(true);
+      expect(await fs.promises.readFile(target, 'utf8')).toBe('keep me');
+    });
+
+    it('should reject a relative save_path without calling Redmine', async () => {
+      const result = await downloadAttachment({ id: 7, save_path: 'out.png' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('absolute');
+      expect(redmineClient.getAttachment).not.toHaveBeenCalled();
+      expect(redmineClient.downloadAttachment).not.toHaveBeenCalled();
+    });
+
+    it('should expand a leading ~/ in save_path', async () => {
+      const homedir = vi.spyOn(os, 'homedir').mockReturnValue(dir);
+
+      try {
+        const result = await downloadAttachment({ id: 7, save_path: '~/out.png' });
+
+        expect(result.isError).toBeUndefined();
+        expect((await fs.promises.readFile(path.join(dir, 'out.png'))).equals(bytes)).toBe(true);
+      } finally {
+        homedir.mockRestore();
+      }
+    });
+
+    it('should not save a response whose size differs from the attachment', async () => {
+      // An invalid key can follow a redirect to the HTML login page with status 200.
+      const savePath = path.join(dir, 'out.png');
+      vi.mocked(redmineClient.downloadAttachment).mockResolvedValue(Buffer.from('<html>login</html>'));
+
+      const result = await downloadAttachment({ id: 7, save_path: savePath });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('512');
+      await expect(fs.promises.stat(savePath)).rejects.toThrow('ENOENT');
+    });
+
+    it('should not create a file when the download fails', async () => {
+      const savePath = path.join(dir, 'out.png');
+      vi.mocked(redmineClient.downloadAttachment).mockRejectedValue(new Error('Not found'));
+
+      const result = await downloadAttachment({ id: 7, save_path: savePath });
+
+      expect(result.isError).toBe(true);
+      await expect(fs.promises.stat(savePath)).rejects.toThrow('ENOENT');
+    });
+
+    it('should not create missing parent directories', async () => {
+      const savePath = path.join(dir, 'missing', 'out.png');
+
+      const result = await downloadAttachment({ id: 7, save_path: savePath });
+
+      expect(result.isError).toBe(true);
+      await expect(fs.promises.stat(path.dirname(savePath))).rejects.toThrow('ENOENT');
+    });
+
+    it('should require id and save_path', async () => {
+      expect((await downloadAttachment({ save_path: path.join(dir, 'x') })).isError).toBe(true);
+      expect((await downloadAttachment({ id: 7 })).isError).toBe(true);
+      expect(redmineClient.downloadAttachment).not.toHaveBeenCalled();
     });
   });
 
