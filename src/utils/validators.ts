@@ -130,6 +130,11 @@ export const updateAttachmentSchema = z.object({
   description: z.string().optional(),
 });
 
+export const downloadAttachmentSchema = z.object({
+  id: positiveIntegerSchema,
+  save_path: z.string().min(1),
+});
+
 // File validators
 export const createFileSchema = z.object({
   token: z.string().min(1),
@@ -140,9 +145,13 @@ export const createFileSchema = z.object({
 
 // Upload validators
 export const uploadFileSchema = z.object({
-  content_base64: z.string().min(1),
+  content_base64: z.string().min(1).optional(),
+  file_path: z.string().min(1).optional(),
   filename: z.string().optional(),
-});
+}).refine(
+  (data) => (data.content_base64 ? 1 : 0) + (data.file_path ? 1 : 0) === 1,
+  { message: 'Provide exactly one of content_base64 or file_path' }
+);
 
 const customRequestMethods = ['GET', 'POST', 'PUT', 'DELETE'] as const;
 export type CustomRequestMethod = typeof customRequestMethods[number];

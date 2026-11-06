@@ -258,6 +258,16 @@ export class RedmineClient {
     await this.axios.patch(`/attachments/${this.pathSegment(id)}.json`, { attachment: data });
   }
 
+  // Built on the configured base URL instead of calling content_url, whose host comes
+  // from the server's response: the API key must only ever go to REDMINE_URL.
+  async downloadAttachment(id: number, filename: string): Promise<Buffer> {
+    const response = await this.axios.get(
+      `/attachments/download/${this.pathSegment(id)}/${this.pathSegment(filename)}`,
+      { responseType: 'arraybuffer' }
+    );
+    return Buffer.from(response.data);
+  }
+
   async deleteAttachment(id: number): Promise<void> {
     await this.axios.delete(`/attachments/${this.pathSegment(id)}.json`);
   }
@@ -274,13 +284,10 @@ export class RedmineClient {
 
   // Uploads
   async uploadFile(content: Buffer, filename?: string): Promise<{ upload: Upload }> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/octet-stream',
-    };
-    if (filename) {
-      headers['Content-Disposition'] = `attachment; filename="${filename}"`;
-    }
-    const response = await this.axios.post('/uploads.json', content, { headers });
+    const response = await this.axios.post('/uploads.json', content, {
+      headers: { 'Content-Type': 'application/octet-stream' },
+      params: filename ? { filename } : undefined,
+    });
     return response.data;
   }
 

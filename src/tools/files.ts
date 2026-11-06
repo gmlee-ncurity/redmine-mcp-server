@@ -1,8 +1,26 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { redmineClient } from '../client/index.js';
+import { config } from '../config.js';
 import { formatFile, formatList } from '../utils/formatters.js';
-import { formatErrorResponse } from '../utils/errors.js';
+import { formatErrorResponse, ValidationError } from '../utils/errors.js';
 import { validateInput, createFileSchema, uploadFileSchema } from '../utils/validators.js';
+
+// Reading or writing a server-side path is only safe on stdio, where the server runs
+// as the user. On streamable-http it would give callers file access on the host.
+export function resolveLocalPath(input: string, field: string): string {
+  if (config.transport.type !== 'stdio') {
+    throw new ValidationError(`${field} is only available on the stdio transport`, field);
+  }
+  const resolved = input.startsWith('~/') ? path.join(os.homedir(), input.slice(2)) : input;
+  // A relative path would resolve against the server process's cwd, not the caller's.
+  if (!path.isAbsolute(resolved)) {
+    throw new ValidationError(`${field} must be an absolute path`, field);
+  }
+  return resolved;
+}
 
 // List files tool
 export const listFilesTool: Tool = {
@@ -99,34 +117,51 @@ export async function createFile(input: unknown) {
 // Upload file tool
 export const uploadFileTool: Tool = {
   name: 'redmine_upload_file',
-  description: 'Upload a file to Redmine and get an upload token. The token can then be used with redmine_create_file or when creating/updating issues with attachments.',
+  description: 'Upload a file to Redmine and get an upload token. Provide exactly one of file_path (preferred) or content_base64. The token can then be used with redmine_create_file or when creating/updating issues with attachments.',
   inputSchema: {
     type: 'object',
     properties: {
+      file_path: {
+        type: 'string',
+        description:
+          'Absolute path to a local file to upload. Preferred for anything but tiny files: the server reads the bytes from disk, so they never pass through the conversation. Only available on the stdio transport, where the server runs on the same machine as the file. A leading "~/" is expanded to the home directory.',
+      },
       content_base64: {
         type: 'string',
-        description: 'File content encoded as a base64 string',
+        description:
+          'File content encoded as a base64 string. Use only when file_path is unavailable (streamable-http transport) or the bytes have no path on disk.',
       },
       filename: {
         type: 'string',
-        description: 'Original filename (optional, used in Content-Disposition header)',
+        description:
+          'Filename to register the upload under. Defaults to the basename of file_path. Pass it explicitly with content_base64: without it Redmine assigns a random hex name unless the uploads[] entry sets filename.',
       },
     },
-    required: ['content_base64'],
   },
 };
 
 export async function uploadFile(input: unknown) {
   try {
     const validatedData = validateInput(uploadFileSchema, input);
-    const content = Buffer.from(validatedData.content_base64, 'base64');
+    let content: Buffer;
+    let filename = validatedData.filename;
 
-    const response = await redmineClient.uploadFile(content, validatedData.filename);
+    if (validatedData.content_base64) {
+      content = Buffer.from(validatedData.content_base64, 'base64');
+    } else if (validatedData.file_path) {
+      const filePath = resolveLocalPath(validatedData.file_path, 'file_path');
+      content = await fs.promises.readFile(filePath);
+      filename = filename || path.basename(filePath);
+    } else {
+      throw new ValidationError('Provide exactly one of content_base64 or file_path');
+    }
+
+    const response = await redmineClient.uploadFile(content, filename);
 
     return {
       content: [{
         type: 'text',
-        text: `File uploaded successfully!\nToken: ${response.upload.token}\n\nUse this token with redmine_create_file or when creating/updating issues with attachments.`,
+        text: `File uploaded successfully!\nToken: ${response.upload.token}${filename ? `\nFilename: ${filename}` : ''}\n\nUse this token with redmine_create_file or when creating/updating issues with attachments.`,
       }],
     };
   } catch (error) {

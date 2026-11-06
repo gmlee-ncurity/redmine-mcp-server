@@ -2,15 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { formatJournals, formatIssue } from '../../src/utils/formatters.js';
 import type { Journal, RedmineIssue } from '../../src/client/types.js';
 
-function journal(id: number, notes?: string): Journal {
+function journal(id: number, notes?: string, created_on = `2026-07-1${id}T00:00:00Z`): Journal {
   return {
     id,
     user: { id: 1, name: `User${id}` },
     notes,
-    created_on: `2026-07-1${id}T00:00:00Z`,
+    created_on,
     private_notes: false,
   };
 }
+
+const notes = (out: string) => [...out.matchAll(/^- .*?\): (.*)$/gm)].map((m) => m[1]);
 
 describe('formatJournals', () => {
   it('returns empty string when journals not fetched (undefined)', () => {
@@ -95,6 +97,38 @@ describe('formatJournals', () => {
     expect(out).toContain('journals_order=asc');
     expect(out).toContain('journals_offset=0');
   });
+
+  // Redmine reverses journals when the API user's comments_sorting preference is desc.
+  describe.each([
+    ['oldest first', [journal(1, 'old'), journal(2, 'mid'), journal(3, 'new')]],
+    ['newest first', [journal(3, 'new'), journal(2, 'mid'), journal(1, 'old')]],
+  ])('when the API returns journals %s', (_, js) => {
+    it.each([
+      ['asc', 0, ['old', 'mid', 'new']],
+      ['asc', 1, ['mid', 'new']],
+      ['desc', 0, ['new', 'mid', 'old']],
+      ['desc', 1, ['mid', 'old']],
+    ] as const)('journals_order=%s offset=%i', (journalsOrder, journalsOffset, expected) => {
+      const out = formatJournals(js, { includeJournals: true, journalsOrder, journalsOffset });
+      expect(notes(out)).toEqual(expected);
+    });
+  });
+
+  it('breaks created_on ties by id', () => {
+    const at = '2026-07-11T00:00:00Z';
+    const js = [journal(6, 'second', at), journal(5, 'first', at)];
+    const out = formatJournals(js, { includeJournals: true, journalsOrder: 'asc' });
+    expect(notes(out)).toEqual(['first', 'second']);
+  });
+
+  it('compares created_on as instants, not strings', () => {
+    const js = [
+      journal(1, 'later', '2026-07-11T00:30:00Z'),
+      journal(2, 'earlier', '2026-07-11T09:00:00+09:00'),
+    ];
+    const out = formatJournals(js, { includeJournals: true, journalsOrder: 'asc' });
+    expect(notes(out)).toEqual(['earlier', 'later']);
+  });
 });
 
 describe('formatIssue with options', () => {
@@ -123,5 +157,24 @@ describe('formatIssue with options', () => {
   it('omits any Comments line when issue has no journals field', () => {
     const out = formatIssue(baseIssue);
     expect(out).not.toContain('Comments');
+  });
+
+  it('lists attachments with the id needed to download them', () => {
+    const out = formatIssue({
+      ...baseIssue,
+      attachments: [
+        { id: 41201, filename: 'shot.png', filesize: 91972, content_type: 'image/png' },
+        { id: 41202, filename: 'notes', filesize: 10 },
+      ],
+    } as unknown as RedmineIssue);
+
+    expect(out).toContain('Attachments (2):');
+    expect(out).toContain('- #41201 shot.png (91972 bytes, image/png)');
+    expect(out).toContain('- #41202 notes (10 bytes)');
+  });
+
+  it('omits the Attachments section when there are none', () => {
+    expect(formatIssue(baseIssue)).not.toContain('Attachments');
+    expect(formatIssue({ ...baseIssue, attachments: [] })).not.toContain('Attachments');
   });
 });

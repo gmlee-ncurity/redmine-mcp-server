@@ -39,6 +39,9 @@ export function formatJournals(
   }
 
   const order = opts.journalsOrder ?? 'desc';
+  // Redmine returns journals in the API user's comments_sorting order, so sort here
+  // (same key as Issue#visible_journals_with_index) instead of trusting it.
+  withNotes.sort((a, b) => Date.parse(a.created_on) - Date.parse(b.created_on) || a.id - b.id);
   const ordered = order === 'desc' ? [...withNotes].reverse() : [...withNotes];
 
   const offset = opts.journalsOffset ?? 0;
@@ -109,6 +112,14 @@ export function formatIssue(issue: RedmineIssue, opts: FormatIssueOptions = {}):
 
   if (issue.fixed_version) {
     parts.push(`Version: ${issue.fixed_version.name}`);
+  }
+
+  if (issue.attachments?.length) {
+    const lines = issue.attachments.map((attachment) => {
+      const details = [`${attachment.filesize} bytes`, attachment.content_type].filter(Boolean).join(', ');
+      return `- #${attachment.id} ${attachment.filename} (${details})`;
+    });
+    parts.push(`\nAttachments (${lines.length}):\n${lines.join('\n')}`);
   }
 
   const journalsText = formatJournals(issue.journals, opts);
