@@ -2,15 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { formatJournals, formatIssue } from '../../src/utils/formatters.js';
 import type { Journal, RedmineIssue } from '../../src/client/types.js';
 
-function journal(id: number, notes?: string): Journal {
+function journal(id: number, notes?: string, created_on = `2026-07-1${id}T00:00:00Z`): Journal {
   return {
     id,
     user: { id: 1, name: `User${id}` },
     notes,
-    created_on: `2026-07-1${id}T00:00:00Z`,
+    created_on,
     private_notes: false,
   };
 }
+
+const notes = (out: string) => [...out.matchAll(/^- .*?\): (.*)$/gm)].map((m) => m[1]);
 
 describe('formatJournals', () => {
   it('returns empty string when journals not fetched (undefined)', () => {
@@ -94,6 +96,38 @@ describe('formatJournals', () => {
     // asc order keeps [j1(long), j2(short)]; offset 0 is the long note → truncated
     expect(out).toContain('journals_order=asc');
     expect(out).toContain('journals_offset=0');
+  });
+
+  // Redmine reverses journals when the API user's comments_sorting preference is desc.
+  describe.each([
+    ['oldest first', [journal(1, 'old'), journal(2, 'mid'), journal(3, 'new')]],
+    ['newest first', [journal(3, 'new'), journal(2, 'mid'), journal(1, 'old')]],
+  ])('when the API returns journals %s', (_, js) => {
+    it.each([
+      ['asc', 0, ['old', 'mid', 'new']],
+      ['asc', 1, ['mid', 'new']],
+      ['desc', 0, ['new', 'mid', 'old']],
+      ['desc', 1, ['mid', 'old']],
+    ] as const)('journals_order=%s offset=%i', (journalsOrder, journalsOffset, expected) => {
+      const out = formatJournals(js, { includeJournals: true, journalsOrder, journalsOffset });
+      expect(notes(out)).toEqual(expected);
+    });
+  });
+
+  it('breaks created_on ties by id', () => {
+    const at = '2026-07-11T00:00:00Z';
+    const js = [journal(6, 'second', at), journal(5, 'first', at)];
+    const out = formatJournals(js, { includeJournals: true, journalsOrder: 'asc' });
+    expect(notes(out)).toEqual(['first', 'second']);
+  });
+
+  it('compares created_on as instants, not strings', () => {
+    const js = [
+      journal(1, 'later', '2026-07-11T00:30:00Z'),
+      journal(2, 'earlier', '2026-07-11T09:00:00+09:00'),
+    ];
+    const out = formatJournals(js, { includeJournals: true, journalsOrder: 'asc' });
+    expect(notes(out)).toEqual(['earlier', 'later']);
   });
 });
 
