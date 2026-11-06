@@ -172,6 +172,7 @@ When adding tests:
 - `REDMINE_CA_CERT` - Custom CA certificate path
 - `REDMINE_REQUEST_TIMEOUT` - Request timeout ms (default: 30000)
 - `REDMINE_MAX_RETRIES` - Max retry attempts (default: 3)
+- `REDMINE_DOWNLOAD_DIR` - Folder for downloaded attachments (default: ~/redmine-attachments)
 - `LOG_LEVEL` - Logging level (debug/info/warn/error, default: info)
 
 ## Integration Notes

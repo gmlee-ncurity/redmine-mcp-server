@@ -1,10 +1,11 @@
 import fs from 'fs';
+import path from 'path';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { redmineClient } from '../client/index.js';
 import { formatAttachment } from '../utils/formatters.js';
 import { formatErrorResponse } from '../utils/errors.js';
 import { validateInput, parseId, updateAttachmentSchema, downloadAttachmentSchema } from '../utils/validators.js';
-import { resolveLocalPath } from './files.js';
+import { resolveDownloadDir } from './files.js';
 
 // Get attachment tool
 export const getAttachmentTool: Tool = {
@@ -44,7 +45,7 @@ export async function getAttachment(input: unknown) {
 // Download attachment tool
 export const downloadAttachmentTool: Tool = {
   name: 'redmine_download_attachment',
-  description: 'Download an attachment to a new local file. The bytes are written to disk rather than returned, so this works for binary files such as images. Refuses to overwrite an existing file. Only available on the stdio transport. Find attachment IDs with redmine_get_issue and include: ["attachments"].',
+  description: 'Download an attachment to the configured download folder and return the saved path. The bytes are written to disk rather than returned, so this works for binary files such as images. Refuses to replace an existing file. Only available on the stdio transport. Find attachment IDs with redmine_get_issue and include: ["attachments"].',
   inputSchema: {
     type: 'object',
     properties: {
@@ -52,20 +53,15 @@ export const downloadAttachmentTool: Tool = {
         type: 'number',
         description: 'Attachment ID',
       },
-      save_path: {
-        type: 'string',
-        description:
-          'Absolute path of the file to create, including its filename. The parent directory must already exist. A leading "~/" is expanded to the home directory.',
-      },
     },
-    required: ['id', 'save_path'],
+    required: ['id'],
   },
 };
 
 export async function downloadAttachment(input: unknown) {
   try {
-    const { id, save_path } = validateInput(downloadAttachmentSchema, input);
-    const filePath = resolveLocalPath(save_path, 'save_path');
+    const { id } = validateInput(downloadAttachmentSchema, input);
+    const dir = resolveDownloadDir();
 
     const { attachment } = await redmineClient.getAttachment(id);
     // ponytail: holds the whole file in memory, stream it if attachments outgrow that.
@@ -78,6 +74,9 @@ export async function downloadAttachment(input: unknown) {
       );
     }
 
+    // The filename comes from the server, so it must not be able to leave the folder.
+    const filePath = path.join(dir, `${id}-${attachment.filename.replace(/[/\\\p{Cc}]/gu, '_')}`);
+    await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
     // Attachment content is untrusted: 'wx' never replaces a file or follows a symlink,
     // and the mode keeps it private and non-executable.
     await fs.promises.writeFile(filePath, content, { flag: 'wx', mode: 0o600 });

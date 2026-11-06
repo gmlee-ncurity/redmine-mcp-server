@@ -207,6 +207,7 @@ Location of config file:
 | `REDMINE_CA_CERT` | Path to custom CA certificate | - |
 | `REDMINE_REQUEST_TIMEOUT` | Request timeout in ms | `30000` |
 | `REDMINE_MAX_RETRIES` | Max retry attempts | `3` |
+| `REDMINE_DOWNLOAD_DIR` | Folder for downloaded attachments | `~/redmine-attachments` |
 | `LOG_LEVEL` | Logging level | `info` |
 
 ### Configuration in MCP Clients

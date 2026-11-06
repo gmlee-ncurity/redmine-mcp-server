@@ -1,7 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
 import { uploadFile } from '../../src/tools/files.js';
 import { downloadAttachment } from '../../src/tools/attachments.js';
 import { redmineClient } from '../../src/client/index.js';
@@ -49,15 +46,12 @@ describe('uploadFile file_path guard', () => {
     expect(result.content[0].text).toContain('Token: http-token');
   });
 
-  it('should refuse save_path on the streamable-http transport', async () => {
-    const savePath = path.join(os.tmpdir(), `redmine-guard-${process.pid}.bin`);
-
-    const result = await downloadAttachment({ id: 7, save_path: savePath });
+  it('should refuse downloads on the streamable-http transport', async () => {
+    const result = await downloadAttachment({ id: 7 });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('stdio');
     expect(redmineClient.getAttachment).not.toHaveBeenCalled();
     expect(redmineClient.downloadAttachment).not.toHaveBeenCalled();
-    await expect(fs.promises.stat(savePath)).rejects.toThrow('ENOENT');
   });
 });
