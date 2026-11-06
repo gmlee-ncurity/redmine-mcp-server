@@ -114,6 +114,14 @@ export function formatIssue(issue: RedmineIssue, opts: FormatIssueOptions = {}):
     parts.push(`Version: ${issue.fixed_version.name}`);
   }
 
+  if (issue.attachments?.length) {
+    const lines = issue.attachments.map((attachment) => {
+      const details = [`${attachment.filesize} bytes`, attachment.content_type].filter(Boolean).join(', ');
+      return `- #${attachment.id} ${attachment.filename} (${details})`;
+    });
+    parts.push(`\nAttachments (${lines.length}):\n${lines.join('\n')}`);
+  }
+
   const journalsText = formatJournals(issue.journals, opts);
   if (journalsText) {
     parts.push(journalsText);

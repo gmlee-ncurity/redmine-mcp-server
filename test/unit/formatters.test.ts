@@ -158,4 +158,23 @@ describe('formatIssue with options', () => {
     const out = formatIssue(baseIssue);
     expect(out).not.toContain('Comments');
   });
+
+  it('lists attachments with the id needed to download them', () => {
+    const out = formatIssue({
+      ...baseIssue,
+      attachments: [
+        { id: 41201, filename: 'shot.png', filesize: 91972, content_type: 'image/png' },
+        { id: 41202, filename: 'notes', filesize: 10 },
+      ],
+    } as unknown as RedmineIssue);
+
+    expect(out).toContain('Attachments (2):');
+    expect(out).toContain('- #41201 shot.png (91972 bytes, image/png)');
+    expect(out).toContain('- #41202 notes (10 bytes)');
+  });
+
+  it('omits the Attachments section when there are none', () => {
+    expect(formatIssue(baseIssue)).not.toContain('Attachments');
+    expect(formatIssue({ ...baseIssue, attachments: [] })).not.toContain('Attachments');
+  });
 });
