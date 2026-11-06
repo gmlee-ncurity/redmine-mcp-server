@@ -39,6 +39,9 @@ export function formatJournals(
   }
 
   const order = opts.journalsOrder ?? 'desc';
+  // Redmine returns journals in the API user's comments_sorting order, so sort here
+  // (same key as Issue#visible_journals_with_index) instead of trusting it.
+  withNotes.sort((a, b) => Date.parse(a.created_on) - Date.parse(b.created_on) || a.id - b.id);
   const ordered = order === 'desc' ? [...withNotes].reverse() : [...withNotes];
 
   const offset = opts.journalsOffset ?? 0;
