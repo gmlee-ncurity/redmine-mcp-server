@@ -34,6 +34,7 @@ REDMINE_API_KEY=your-api-key-here
 # Optional: Request configuration
 # REDMINE_REQUEST_TIMEOUT=30000
 # REDMINE_MAX_RETRIES=3
+# REDMINE_DOWNLOAD_DIR=~/redmine-attachments
 
 # Optional: Transport configuration
 # MCP_TRANSPORT=stdio          # "stdio" (default) or "streamable-http"

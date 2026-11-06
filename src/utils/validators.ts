@@ -132,7 +132,6 @@ export const updateAttachmentSchema = z.object({
 
 export const downloadAttachmentSchema = z.object({
   id: positiveIntegerSchema,
-  save_path: z.string().min(1),
 });
 
 // File validators

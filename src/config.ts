@@ -25,6 +25,7 @@ const configSchema = z.object({
     caCert: z.string().optional(),
     requestTimeout: z.number().default(30000),
     maxRetries: z.number().default(3),
+    downloadDir: z.string().optional(),
   }),
   transport: z.object({
     type: z.enum(['stdio', 'streamable-http']).default('stdio'),
@@ -91,6 +92,7 @@ export function loadConfig(): RedmineConfig {
       maxRetries: process.env.REDMINE_MAX_RETRIES
         ? parseInt(process.env.REDMINE_MAX_RETRIES, 10)
         : 3,
+      downloadDir: process.env.REDMINE_DOWNLOAD_DIR,
     },
     transport: {
       type: transportType,

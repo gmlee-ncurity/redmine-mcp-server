@@ -4,6 +4,7 @@ import fs from 'fs';
 import { config } from '../config.js';
 import { sessionStore } from '../context.js';
 import { validateCustomRequestMethod, validateCustomRequestPath } from '../utils/validators.js';
+import { handleAxiosError, RedmineError } from '../utils/errors.js';
 import type {
   RedmineUser,
   RedmineProject,
@@ -94,7 +95,7 @@ export class RedmineClient {
         }
 
         if (requestConfig.retryCount >= config.redmine.maxRetries) {
-          return Promise.reject(error);
+          handleAxiosError(error);
         }
 
         // Retry on network errors or 5xx status codes
@@ -112,7 +113,7 @@ export class RedmineClient {
           return this.axios(requestConfig);
         }
 
-        return Promise.reject(error);
+        handleAxiosError(error);
       }
     );
   }
@@ -301,6 +302,14 @@ export class RedmineClient {
       data,
       params,
     });
+    // axios has already decoded the body as text, which corrupts binary content. An empty
+    // body has nothing to corrupt, and rejecting it would report a successful write as failed.
+    const contentType = String(response.headers?.['content-type'] ?? '');
+    if (response.data && contentType && !/^(text\/|application\/(json|xml)\b|[^;]*\+(json|xml)\b)/i.test(contentType)) {
+      throw new RedmineError(
+        `Binary response (${contentType}) cannot be returned as text. Use redmine_download_attachment for attachments.`
+      );
+    }
     return response.data;
   }
 }

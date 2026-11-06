@@ -5,21 +5,54 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { redmineClient } from '../client/index.js';
 import { config } from '../config.js';
 import { formatFile, formatList } from '../utils/formatters.js';
-import { formatErrorResponse, ValidationError } from '../utils/errors.js';
+import { ConfigurationError, formatErrorResponse, ValidationError } from '../utils/errors.js';
 import { validateInput, createFileSchema, uploadFileSchema } from '../utils/validators.js';
 
-// Reading or writing a server-side path is only safe on stdio, where the server runs
-// as the user. On streamable-http it would give callers file access on the host.
-export function resolveLocalPath(input: string, field: string): string {
+// Local file access is only safe on stdio, where the server runs as the user. On
+// streamable-http it would give callers file access on the host.
+function requireStdio(feature: string): void {
   if (config.transport.type !== 'stdio') {
-    throw new ValidationError(`${field} is only available on the stdio transport`, field);
+    throw new ValidationError(`${feature} is only available on the stdio transport`);
   }
-  const resolved = input.startsWith('~/') ? path.join(os.homedir(), input.slice(2)) : input;
+}
+
+function expandHome(input: string): string {
+  return input.startsWith('~/') ? path.join(os.homedir(), input.slice(2)) : input;
+}
+
+// The path can originate from untrusted issue text, and whatever it names ends up in
+// Redmine, so hidden paths, where credentials usually live, are refused.
+// ponytail: a deny rule, not a sandbox. Paths such as /etc stay readable; add an
+// allowed-folders setting if that matters.
+export async function resolveUploadPath(input: string): Promise<string> {
+  requireStdio('file_path');
+  const expanded = expandHome(input);
   // A relative path would resolve against the server process's cwd, not the caller's.
-  if (!path.isAbsolute(resolved)) {
-    throw new ValidationError(`${field} must be an absolute path`, field);
+  if (!path.isAbsolute(expanded)) {
+    throw new ValidationError('file_path must be an absolute path', 'file_path');
   }
-  return resolved;
+  // realpath, so that neither a symlink nor .. can reach a hidden path.
+  const real = await fs.promises.realpath(expanded);
+  if (real.split(path.sep).some((segment) => segment.startsWith('.'))) {
+    throw new ValidationError('file_path must not point to a hidden file or directory', 'file_path');
+  }
+  // Reading anything else may never finish: /dev/zero grows until memory runs out and a
+  // FIFO blocks the process so hard that it cannot exit.
+  if (!(await fs.promises.stat(real)).isFile()) {
+    throw new ValidationError('file_path must be a regular file', 'file_path');
+  }
+  return real;
+}
+
+// Downloaded content is untrusted, so where it lands is the operator's choice, never
+// the caller's: otherwise it could plant files that something else later runs.
+export function resolveDownloadDir(): string {
+  requireStdio('redmine_download_attachment');
+  const dir = expandHome(config.redmine.downloadDir ?? path.join(os.homedir(), 'redmine-attachments'));
+  if (!path.isAbsolute(dir)) {
+    throw new ConfigurationError('REDMINE_DOWNLOAD_DIR must be an absolute path');
+  }
+  return dir;
 }
 
 // List files tool
@@ -124,7 +157,7 @@ export const uploadFileTool: Tool = {
       file_path: {
         type: 'string',
         description:
-          'Absolute path to a local file to upload. Preferred for anything but tiny files: the server reads the bytes from disk, so they never pass through the conversation. Only available on the stdio transport, where the server runs on the same machine as the file. A leading "~/" is expanded to the home directory.',
+          'Absolute path to a local file to upload. Preferred for anything but tiny files: the server reads the bytes from disk, so they never pass through the conversation. Only available on the stdio transport, where the server runs on the same machine as the file. It must be a regular file; hidden files and directories are refused. A leading "~/" is expanded to the home directory.',
       },
       content_base64: {
         type: 'string',
@@ -149,9 +182,8 @@ export async function uploadFile(input: unknown) {
     if (validatedData.content_base64) {
       content = Buffer.from(validatedData.content_base64, 'base64');
     } else if (validatedData.file_path) {
-      const filePath = resolveLocalPath(validatedData.file_path, 'file_path');
-      content = await fs.promises.readFile(filePath);
-      filename = filename || path.basename(filePath);
+      content = await fs.promises.readFile(await resolveUploadPath(validatedData.file_path));
+      filename = filename || path.basename(validatedData.file_path);
     } else {
       throw new ValidationError('Provide exactly one of content_base64 or file_path');
     }

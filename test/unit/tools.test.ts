@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -44,6 +45,7 @@ import {
 } from '../../src/tools/files.js';
 import { customRequest, tools, toolHandlers } from '../../src/tools/index.js';
 import { redmineClient } from '../../src/client/index.js';
+import { config } from '../../src/config.js';
 
 // Mock the client
 vi.mock('../../src/client/index.js', () => ({
@@ -881,10 +883,10 @@ describe('Attachment Tools', () => {
 
   describe('downloadAttachment', () => {
     const bytes = Buffer.from(Array.from({ length: 512 }, (_, i) => i % 256));
-    const metadata = (filesize: number) => ({
+    const metadata = (filesize: number, filename = 'shot.png') => ({
       attachment: {
         id: 7,
-        filename: 'shot.png',
+        filename,
         filesize,
         content_type: 'image/png',
         content_url: 'https://elsewhere.example/attachments/download/7/shot.png',
@@ -892,16 +894,20 @@ describe('Attachment Tools', () => {
         created_on: '2026-01-01T00:00:00Z',
       },
     });
+    let root: string;
     let dir: string;
 
     beforeEach(async () => {
-      dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-download-'));
+      root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-download-'));
+      dir = path.join(root, 'downloads');
+      config.redmine.downloadDir = dir;
       vi.mocked(redmineClient.getAttachment).mockResolvedValue(metadata(bytes.length));
       vi.mocked(redmineClient.downloadAttachment).mockResolvedValue(bytes);
     });
 
     afterEach(async () => {
-      await fs.promises.rm(dir, { recursive: true, force: true });
+      config.redmine.downloadDir = undefined;
+      await fs.promises.rm(root, { recursive: true, force: true });
     });
 
     it('should be registered as a tool with a handler', () => {
@@ -909,104 +915,135 @@ describe('Attachment Tools', () => {
       expect(toolHandlers.redmine_download_attachment).toBe(downloadAttachment);
     });
 
-    it('should save the exact bytes to save_path', async () => {
-      const savePath = path.join(dir, 'out.png');
+    it('should not offer the caller a choice of location', () => {
+      const tool = tools.find((t) => t.name === 'redmine_download_attachment');
 
-      const result = await downloadAttachment({ id: 7, save_path: savePath });
+      expect(Object.keys(tool?.inputSchema.properties ?? {})).toEqual(['id']);
+    });
+
+    it('should save the exact bytes in the download folder', async () => {
+      const result = await downloadAttachment({ id: 7 });
+      const saved = path.join(dir, '7-shot.png');
 
       expect(result.isError).toBeUndefined();
       expect(redmineClient.downloadAttachment).toHaveBeenCalledWith(7, 'shot.png');
-      expect((await fs.promises.readFile(savePath)).equals(bytes)).toBe(true);
-      expect(result.content[0].text).toContain(savePath);
+      expect((await fs.promises.readFile(saved)).equals(bytes)).toBe(true);
+      expect(result.content[0].text).toContain(saved);
       expect(result.content[0].text).toContain('512 bytes');
     });
 
-    it('should create the file readable only by its owner', async () => {
-      const savePath = path.join(dir, 'out.png');
-
-      await downloadAttachment({ id: 7, save_path: savePath });
-
-      expect((await fs.promises.stat(savePath)).mode & 0o777).toBe(0o600);
-    });
-
-    it('should refuse to overwrite an existing file', async () => {
-      const savePath = path.join(dir, 'out.png');
-      await fs.promises.writeFile(savePath, 'keep me');
-
-      const result = await downloadAttachment({ id: 7, save_path: savePath });
-
-      expect(result.isError).toBe(true);
-      expect(await fs.promises.readFile(savePath, 'utf8')).toBe('keep me');
-    });
-
-    it('should refuse to write through a symlink', async () => {
-      const target = path.join(dir, 'target');
-      const link = path.join(dir, 'link');
-      await fs.promises.writeFile(target, 'keep me');
-      await fs.promises.symlink(target, link);
-
-      const result = await downloadAttachment({ id: 7, save_path: link });
-
-      expect(result.isError).toBe(true);
-      expect(await fs.promises.readFile(target, 'utf8')).toBe('keep me');
-    });
-
-    it('should reject a relative save_path without calling Redmine', async () => {
-      const result = await downloadAttachment({ id: 7, save_path: 'out.png' });
-
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('absolute');
-      expect(redmineClient.getAttachment).not.toHaveBeenCalled();
-      expect(redmineClient.downloadAttachment).not.toHaveBeenCalled();
-    });
-
-    it('should expand a leading ~/ in save_path', async () => {
-      const homedir = vi.spyOn(os, 'homedir').mockReturnValue(dir);
+    it('should default to redmine-attachments in the home directory', async () => {
+      config.redmine.downloadDir = undefined;
+      const homedir = vi.spyOn(os, 'homedir').mockReturnValue(root);
 
       try {
-        const result = await downloadAttachment({ id: 7, save_path: '~/out.png' });
+        const result = await downloadAttachment({ id: 7 });
 
         expect(result.isError).toBeUndefined();
-        expect((await fs.promises.readFile(path.join(dir, 'out.png'))).equals(bytes)).toBe(true);
+        await fs.promises.access(path.join(root, 'redmine-attachments', '7-shot.png'));
       } finally {
         homedir.mockRestore();
       }
     });
 
+    it('should expand a leading ~/ in the configured folder', async () => {
+      config.redmine.downloadDir = '~/from-env';
+      const homedir = vi.spyOn(os, 'homedir').mockReturnValue(root);
+
+      try {
+        await downloadAttachment({ id: 7 });
+
+        await fs.promises.access(path.join(root, 'from-env', '7-shot.png'));
+      } finally {
+        homedir.mockRestore();
+      }
+    });
+
+    it('should reject a relative configured folder', async () => {
+      config.redmine.downloadDir = 'downloads';
+
+      const result = await downloadAttachment({ id: 7 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('REDMINE_DOWNLOAD_DIR');
+      expect(redmineClient.downloadAttachment).not.toHaveBeenCalled();
+    });
+
+    it('should ignore a location supplied by the caller', async () => {
+      const elsewhere = path.join(root, 'elsewhere.png');
+
+      const result = await downloadAttachment({ id: 7, save_path: elsewhere });
+
+      expect(result.content[0].text).toContain(path.join(dir, '7-shot.png'));
+      await expect(fs.promises.stat(elsewhere)).rejects.toThrow('ENOENT');
+    });
+
+    it('should keep a hostile server filename inside the download folder', async () => {
+      vi.mocked(redmineClient.getAttachment).mockResolvedValue(
+        metadata(bytes.length, '../..\\../.zshrc\n')
+      );
+
+      await downloadAttachment({ id: 7 });
+
+      expect(await fs.promises.readdir(root)).toEqual(['downloads']);
+      const [name] = await fs.promises.readdir(dir);
+      expect(name.startsWith('7-')).toBe(true);
+      expect(name).not.toMatch(/[/\\\n]/);
+    });
+
+    it('should create the folder and file private to their owner', async () => {
+      await downloadAttachment({ id: 7 });
+
+      expect((await fs.promises.stat(dir)).mode & 0o777).toBe(0o700);
+      expect((await fs.promises.stat(path.join(dir, '7-shot.png'))).mode & 0o777).toBe(0o600);
+    });
+
+    it('should refuse to replace a file that is already there', async () => {
+      const saved = path.join(dir, '7-shot.png');
+      await fs.promises.mkdir(dir);
+      await fs.promises.writeFile(saved, 'keep me');
+
+      const result = await downloadAttachment({ id: 7 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain(saved);
+      expect(await fs.promises.readFile(saved, 'utf8')).toBe('keep me');
+    });
+
+    it('should refuse to write through a symlink', async () => {
+      const target = path.join(root, 'target');
+      await fs.promises.mkdir(dir);
+      await fs.promises.writeFile(target, 'keep me');
+      await fs.promises.symlink(target, path.join(dir, '7-shot.png'));
+
+      const result = await downloadAttachment({ id: 7 });
+
+      expect(result.isError).toBe(true);
+      expect(await fs.promises.readFile(target, 'utf8')).toBe('keep me');
+    });
+
     it('should not save a response whose size differs from the attachment', async () => {
       // An invalid key can follow a redirect to the HTML login page with status 200.
-      const savePath = path.join(dir, 'out.png');
       vi.mocked(redmineClient.downloadAttachment).mockResolvedValue(Buffer.from('<html>login</html>'));
 
-      const result = await downloadAttachment({ id: 7, save_path: savePath });
+      const result = await downloadAttachment({ id: 7 });
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('512');
-      await expect(fs.promises.stat(savePath)).rejects.toThrow('ENOENT');
+      await expect(fs.promises.stat(path.join(dir, '7-shot.png'))).rejects.toThrow('ENOENT');
     });
 
     it('should not create a file when the download fails', async () => {
-      const savePath = path.join(dir, 'out.png');
       vi.mocked(redmineClient.downloadAttachment).mockRejectedValue(new Error('Not found'));
 
-      const result = await downloadAttachment({ id: 7, save_path: savePath });
+      const result = await downloadAttachment({ id: 7 });
 
       expect(result.isError).toBe(true);
-      await expect(fs.promises.stat(savePath)).rejects.toThrow('ENOENT');
+      await expect(fs.promises.stat(path.join(dir, '7-shot.png'))).rejects.toThrow('ENOENT');
     });
 
-    it('should not create missing parent directories', async () => {
-      const savePath = path.join(dir, 'missing', 'out.png');
-
-      const result = await downloadAttachment({ id: 7, save_path: savePath });
-
-      expect(result.isError).toBe(true);
-      await expect(fs.promises.stat(path.dirname(savePath))).rejects.toThrow('ENOENT');
-    });
-
-    it('should require id and save_path', async () => {
-      expect((await downloadAttachment({ save_path: path.join(dir, 'x') })).isError).toBe(true);
-      expect((await downloadAttachment({ id: 7 })).isError).toBe(true);
+    it('should require id', async () => {
+      expect((await downloadAttachment({})).isError).toBe(true);
       expect(redmineClient.downloadAttachment).not.toHaveBeenCalled();
     });
   });
@@ -1202,6 +1239,121 @@ describe('File Tools', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('absolute');
       expect(redmineClient.uploadFile).not.toHaveBeenCalled();
+    });
+
+    describe('hidden paths', () => {
+      let dir: string;
+
+      beforeEach(async () => {
+        dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-upload-'));
+        await fs.promises.mkdir(path.join(dir, '.ssh'));
+        await fs.promises.writeFile(path.join(dir, '.ssh', 'id_rsa'), 'secret');
+        await fs.promises.writeFile(path.join(dir, '.env'), 'SECRET=1');
+      });
+
+      afterEach(async () => {
+        await fs.promises.rm(dir, { recursive: true, force: true });
+      });
+
+      const expectRefused = async (filePath: string) => {
+        const result = await uploadFile({ file_path: filePath });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('hidden');
+        expect(redmineClient.uploadFile).not.toHaveBeenCalled();
+      };
+
+      it('should refuse a file inside a hidden directory', async () => {
+        await expectRefused(path.join(dir, '.ssh', 'id_rsa'));
+      });
+
+      it('should refuse a hidden file', async () => {
+        await expectRefused(path.join(dir, '.env'));
+      });
+
+      it('should refuse a hidden path reached through ~/', async () => {
+        const homedir = vi.spyOn(os, 'homedir').mockReturnValue(dir);
+
+        try {
+          await expectRefused('~/.ssh/id_rsa');
+        } finally {
+          homedir.mockRestore();
+        }
+      });
+
+      it('should refuse a hidden path reached through ..', async () => {
+        await fs.promises.mkdir(path.join(dir, 'sub'));
+
+        await expectRefused(`${dir}/sub/../.ssh/id_rsa`);
+      });
+
+      it('should refuse a symlink that points at a hidden path', async () => {
+        const link = path.join(dir, 'harmless.txt');
+        await fs.promises.symlink(path.join(dir, '.ssh', 'id_rsa'), link);
+
+        await expectRefused(link);
+      });
+
+      it('should name a symlink upload after the link', async () => {
+        vi.mocked(redmineClient.uploadFile).mockResolvedValue({ upload: { token: 't' } });
+        const target = path.join(dir, 'target.md');
+        const link = path.join(dir, 'link.md');
+        await fs.promises.writeFile(target, 'plain');
+        await fs.promises.symlink(target, link);
+
+        const result = await uploadFile({ file_path: link });
+
+        expect(result.isError).toBeUndefined();
+        expect(redmineClient.uploadFile).toHaveBeenCalledWith(Buffer.from('plain'), 'link.md');
+      });
+    });
+
+    describe('non-regular files', () => {
+      // Stubbed because really reading these never returns, which would hang the
+      // test run whenever the guard is missing.
+      let read: ReturnType<typeof vi.spyOn>;
+      let dir: string;
+
+      beforeEach(async () => {
+        read = vi.spyOn(fs.promises, 'readFile').mockResolvedValue(Buffer.from('x'));
+        dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-upload-'));
+      });
+
+      afterEach(async () => {
+        read.mockRestore();
+        await fs.promises.rm(dir, { recursive: true, force: true });
+      });
+
+      const expectRefused = async (filePath: string) => {
+        const result = await uploadFile({ file_path: filePath });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('regular file');
+        expect(read).not.toHaveBeenCalled();
+        expect(redmineClient.uploadFile).not.toHaveBeenCalled();
+      };
+
+      it.each(['/dev/zero', '/dev/null', '/dev/random'])('should refuse %s', async (device) => {
+        await expectRefused(device);
+      });
+
+      it('should refuse a FIFO', async () => {
+        const fifo = path.join(dir, 'pipe');
+        execFileSync('mkfifo', [fifo]);
+
+        await expectRefused(fifo);
+      });
+
+      it('should refuse a directory', async () => {
+        await expectRefused(dir);
+      });
+
+      it('should refuse a symlink to a device', async () => {
+        const link = path.join(dir, 'report.pdf');
+        await fs.promises.symlink('/dev/zero', link);
+
+        await expectRefused(link);
+      });
     });
 
     it('should surface a missing file_path as an error', async () => {
