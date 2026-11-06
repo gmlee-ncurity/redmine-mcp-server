@@ -580,6 +580,17 @@ describe('RedmineClient', () => {
       await expect(client.customRequest('GET', '/x')).resolves.toBe('body');
     });
 
+    it.each(['application/octet-stream', 'image/png'])(
+      'should not treat an empty %s response as binary',
+      async (contentType) => {
+        // A successful PUT or DELETE has no body. Failing here would invite a retry
+        // of a write that already happened.
+        respondWith(contentType, '');
+
+        await expect(client.customRequest('PUT', '/issues/1.json', {})).resolves.toBe('');
+      }
+    );
+
     it('should make custom API request', async () => {
       const mockResponse = {
         data: {

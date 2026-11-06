@@ -302,9 +302,10 @@ export class RedmineClient {
       data,
       params,
     });
-    // axios has already decoded the body as text, which corrupts binary content.
+    // axios has already decoded the body as text, which corrupts binary content. An empty
+    // body has nothing to corrupt, and rejecting it would report a successful write as failed.
     const contentType = String(response.headers?.['content-type'] ?? '');
-    if (contentType && !/^(text\/|application\/(json|xml)\b|[^;]*\+(json|xml)\b)/i.test(contentType)) {
+    if (response.data && contentType && !/^(text\/|application\/(json|xml)\b|[^;]*\+(json|xml)\b)/i.test(contentType)) {
       throw new RedmineError(
         `Binary response (${contentType}) cannot be returned as text. Use redmine_download_attachment for attachments.`
       );
