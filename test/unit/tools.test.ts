@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { 
   listIssues, 
   getIssue, 
@@ -1000,6 +1003,80 @@ describe('File Tools', () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Validation error');
+    });
+
+    it('should read from file_path and derive the filename', async () => {
+      vi.mocked(redmineClient.uploadFile).mockResolvedValue({
+        upload: { token: 'file-path-token' },
+      });
+
+      const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-upload-'));
+      const filePath = path.join(dir, 'design.md');
+      await fs.promises.writeFile(filePath, '# design\n');
+
+      try {
+        const result = await uploadFile({ file_path: filePath });
+
+        expect(redmineClient.uploadFile).toHaveBeenCalledWith(
+          Buffer.from('# design\n'),
+          'design.md'
+        );
+        expect(result.content[0].text).toContain('Token: file-path-token');
+        expect(result.content[0].text).toContain('Filename: design.md');
+      } finally {
+        await fs.promises.rm(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('should reject when both content_base64 and file_path are given', async () => {
+      const result = await uploadFile({
+        content_base64: Buffer.from('x').toString('base64'),
+        file_path: '/tmp/x.md',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('exactly one');
+      expect(redmineClient.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('should expand a leading ~/ in file_path', async () => {
+      vi.mocked(redmineClient.uploadFile).mockResolvedValue({
+        upload: { token: 'home-token' },
+      });
+
+      const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'redmine-upload-'));
+      await fs.promises.writeFile(path.join(dir, 'home.md'), 'from home');
+      const homedir = vi.spyOn(os, 'homedir').mockReturnValue(dir);
+
+      try {
+        const result = await uploadFile({ file_path: '~/home.md' });
+
+        expect(result.isError).toBeUndefined();
+        expect(redmineClient.uploadFile).toHaveBeenCalledWith(
+          Buffer.from('from home'),
+          'home.md'
+        );
+      } finally {
+        homedir.mockRestore();
+        await fs.promises.rm(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('should reject a relative file_path', async () => {
+      const result = await uploadFile({ file_path: 'design.md' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('absolute');
+      expect(redmineClient.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('should surface a missing file_path as an error', async () => {
+      const result = await uploadFile({
+        file_path: path.join(os.tmpdir(), 'redmine-upload-does-not-exist.md'),
+      });
+
+      expect(result.isError).toBe(true);
+      expect(redmineClient.uploadFile).not.toHaveBeenCalled();
     });
   });
 });
