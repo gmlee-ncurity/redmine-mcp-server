@@ -34,24 +34,25 @@ export function handleAxiosError(error: AxiosError): never {
   if (error.response) {
     // Server responded with error status
     const statusCode = error.response.status;
-    const data = error.response.data as Record<string, unknown>;
+    const data = error.response.data as Record<string, unknown> | string | undefined;
     
     let message = `Redmine API error (${statusCode})`;
     
-    if (data?.errors) {
+    if (typeof data === 'string') {
+      // Capped: this can be a whole HTML error page from Redmine or a proxy.
+      if (data) message = `${message}: ${data.slice(0, 200)}`;
+    } else if (data?.errors) {
       const errors = Array.isArray(data.errors) ? data.errors : [data.errors];
       message = `${message}: ${errors.join(', ')}`;
     } else if (data?.error) {
       message = `${message}: ${data.error}`;
-    } else if (typeof data === 'string') {
-      message = `${message}: ${data}`;
     }
     
     throw new RedmineError(message, statusCode);
   } else if (error.request) {
     // Request made but no response received
     throw new RedmineError(
-      'No response from Redmine server. Please check the server URL and network connection.'
+      `No response from Redmine server (${error.message}). Please check the server URL and network connection.`
     );
   } else {
     // Error setting up the request

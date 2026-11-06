@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import axios from 'axios';
 import { RedmineClient } from '../../src/client/index.js';
 import { config } from '../../src/config.js';
+import { RedmineError } from '../../src/utils/errors.js';
 
 // Mock axios - must provide interceptors in the factory since singleton is created at import time
 vi.mock('axios', async (importOriginal) => {
@@ -554,6 +555,31 @@ describe('RedmineClient', () => {
   });
 
   describe('customRequest', () => {
+    const respondWith = (contentType: string, data: unknown) =>
+      mockAxiosInstance.request.mockResolvedValue({ data, headers: { 'content-type': contentType } });
+
+    it.each(['image/png', 'application/octet-stream', 'application/pdf', 'application/zip'])(
+      'should refuse a %s response instead of returning corrupted text',
+      async (contentType) => {
+        respondWith(contentType, '\ufffd\ufffd');
+
+        await expect(client.customRequest('GET', '/attachments/download/1/x.bin'))
+          .rejects.toThrow('redmine_download_attachment');
+      }
+    );
+
+    it.each([
+      'application/json; charset=utf-8',
+      'application/xml',
+      'text/plain',
+      'text/markdown; charset=utf-8',
+      'application/vnd.api+json',
+    ])('should return a %s response', async (contentType) => {
+      respondWith(contentType, 'body');
+
+      await expect(client.customRequest('GET', '/x')).resolves.toBe('body');
+    });
+
     it('should make custom API request', async () => {
       const mockResponse = {
         data: {
@@ -626,8 +652,46 @@ describe('RedmineClient', () => {
       
       const config = { retryCount: 3 }; // Already at max retries
       
-      await expect(interceptor({ code: 'ECONNABORTED', config }))
-        .rejects.toMatchObject({ code: 'ECONNABORTED' });
+      const failure = interceptor({ code: 'ECONNABORTED', config, request: {}, message: 'timeout of 30000ms exceeded' });
+
+      await expect(failure).rejects.toBeInstanceOf(RedmineError);
+      await expect(failure).rejects.toThrow('timeout of 30000ms exceeded');
+    });
+
+    describe('errors reaching the tools', () => {
+      const reject = (error: Record<string, unknown>) =>
+        mockAxiosInstance.interceptors.response.use.mock.calls[0][1]({ config: {}, ...error });
+
+      it("should keep Redmine's validation reasons", async () => {
+        const failure = reject({ response: { status: 422, data: { errors: ['File is too big', 'Subject cannot be blank'] } } });
+
+        await expect(failure).rejects.toBeInstanceOf(RedmineError);
+        await expect(failure).rejects.toMatchObject({
+          message: 'Redmine API error (422): File is too big, Subject cannot be blank',
+          statusCode: 422,
+        });
+      });
+
+      it('should report a status that has no reason', async () => {
+        await expect(reject({ response: { status: 404, data: '' } }))
+          .rejects.toThrow('Redmine API error (404)');
+      });
+
+      it('should not include binary error bodies', async () => {
+        await expect(reject({ response: { status: 403, data: Buffer.from([0, 255]) } }))
+          .rejects.toThrow(/^Redmine API error \(403\)$/);
+      });
+
+      it('should cap a long string body such as an HTML error page', async () => {
+        const failure = reject({ response: { status: 403, data: `<html>${'x'.repeat(5000)}` } });
+
+        await expect(failure).rejects.toSatisfy((error: Error) => error.message.length < 300);
+      });
+
+      it('should keep the cause when there is no response', async () => {
+        await expect(reject({ request: {}, message: 'self-signed certificate' }))
+          .rejects.toThrow('self-signed certificate');
+      });
     });
   });
 });
